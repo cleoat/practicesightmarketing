@@ -92,12 +92,51 @@ def safe_post(subreddit_name, title, content):
         }))
 
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print(json.dumps({"error": "No arguments provided"}))
+        sys.exit(1)
+
+    # Handle --test flag
+    if sys.argv[1] == '--test':
+        reddit = get_reddit()
+        if isinstance(reddit, dict) and "error" in reddit:
+            print(json.dumps({"error": reddit["error"], "connected": False}))
+        else:
+            health = check_account_health(reddit)
+            if "error" in health:
+                print(json.dumps({"error": health["error"], "connected": False}))
+            else:
+                print(json.dumps({"connected": True, "username": health["username"], "success": True}))
+        sys.exit(0)
+
+    # Handle --get-user flag
+    if sys.argv[1] == '--get-user':
+        if len(sys.argv) < 3:
+            print(json.dumps({"error": "Username required"}))
+            sys.exit(1)
+        reddit = get_reddit()
+        if isinstance(reddit, dict) and "error" in reddit:
+            print(json.dumps(reddit))
+            sys.exit(1)
+        try:
+            user = reddit.redditor(sys.argv[2])
+            print(json.dumps({
+                "username": user.name,
+                "comment_karma": user.comment_karma,
+                "link_karma": user.link_karma,
+                "created_utc": user.created_utc,
+                "is_suspended": getattr(user, 'is_suspended', False)
+            }))
+        except Exception as e:
+            print(json.dumps({"error": str(e)}))
+        sys.exit(0)
+
+    # Normal post mode: requires subreddit, title, content
     if len(sys.argv) < 4:
         print(json.dumps({"error": "Usage: python script.py <subreddit> <title> <content>"}))
         sys.exit(1)
-    
+
     subreddit = sys.argv[1]
     title = sys.argv[2]
     content = sys.argv[3]
-    
     safe_post(subreddit, title, content)

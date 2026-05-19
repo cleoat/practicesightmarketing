@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create *)",
+      "Bash(cat /tmp/devvit_dev.log)",
+      "Bash(jobs)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
