@@ -3,9 +3,9 @@ import MetricsBar from './components/MetricsBar';
 import PipelineView from './components/PipelineView';
 import SettingsPanel from './components/SettingsPanel';
 import {
-  getLeads, setLeads, addLead, updateLead, deleteLead,
-  getSettings, setSettings, updateSetting,
-  getRedditStats, resetDailyStats, getBackendUrl, setBackendUrl
+  getLeads, setLeads,
+  getSettings, setSettings,
+  getRedditStats, resetDailyStats
 } from './lib/storage';
 import { COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES } from './lib/constants';
 import { validateInput, leadSchema } from './lib/validators';
@@ -14,33 +14,23 @@ function App() {
   const [leads, setLeadsState] = useState([]);
   const [settings, setSettingsState] = useState({});
   const [redditStats, setRedditStatsState] = useState({});
-  const [backendUrl, setBackendUrlState] = useState('');
-  const [input, setInput] = useState('');
+  const [inputName, setInputName] = useState('');
+  const [inputComment, setInputComment] = useState('');
   const [msg, setMsg] = useState('');
   const [filter, setFilter] = useState('all');
   const [loaded, setLoaded] = useState(false);
 
-  // Load data on mount
   useEffect(() => {
     setLeadsState(getLeads());
     setSettingsState(getSettings());
     resetDailyStats();
     setRedditStatsState(getRedditStats());
-    setBackendUrlState(getBackendUrl());
     setLoaded(true);
   }, []);
 
-  // Save leads
-  useEffect(() => {
-    if (loaded) setLeads(leads);
-  }, [leads, loaded]);
+  useEffect(() => { if (loaded) setLeads(leads); }, [leads, loaded]);
+  useEffect(() => { if (loaded) setSettings(settings); }, [settings, loaded]);
 
-  // Save settings
-  useEffect(() => {
-    if (loaded) setSettings(settings);
-  }, [settings, loaded]);
-
-  // Auto-detect stage from keywords
   function detectStage(comment) {
     const lower = comment.toLowerCase();
     if (lower.includes('unbilled') || lower.includes('stuck') || lower.includes('aging') || lower.includes('billing')) return 'warm';
@@ -52,19 +42,16 @@ function App() {
     return 'saw_it';
   }
 
-  // Add lead
   function handleAddLead() {
-    const lines = input.trim().split('\n');
-    const name = lines[0]?.trim();
-    const comment = lines.slice(1).join(' ').trim();
+    const name = inputName.trim();
+    const comment = inputComment.trim();
 
     if (!name || !comment) {
-      setMsg('❌ Need: Name (line 1) + comment (line 2+)');
+      setMsg('❌ Need a name and their comment');
       setTimeout(() => setMsg(''), 2000);
       return;
     }
 
-    // Validate
     const clean = { ...DEFAULT_LEAD, name, comment };
     const validation = validateInput(leadSchema, clean);
     if (!validation.valid) {
@@ -73,7 +60,6 @@ function App() {
       return;
     }
 
-    // Check spam locally first
     if (SPAM_KEYWORDS.some(k => comment.toLowerCase().includes(k))) {
       setMsg('⚠️ Spam keyword detected');
       setTimeout(() => setMsg(''), 2000);
@@ -81,58 +67,38 @@ function App() {
     }
 
     const stage = detectStage(comment);
-    const newLead = { ...DEFAULT_LEAD, name, comment, stage, id: Date.now() };
-    
-    setLeadsState([newLead, ...leads]);
-    setInput('');
+    setLeadsState([{ ...DEFAULT_LEAD, name, comment, stage, id: Date.now() }, ...leads]);
+    setInputName('');
+    setInputComment('');
     setMsg('✓ Added');
     setTimeout(() => setMsg(''), 1500);
   }
 
-  // Update lead
   function handleUpdateLead(id, updates) {
     setLeadsState(leads.map(l => l.id === id ? { ...l, ...updates } : l));
   }
 
-  // Delete lead
   function handleDeleteLead(id) {
     setLeadsState(leads.filter(l => l.id !== id));
   }
 
-  // Handle reply
   function handleReply(id, comment) {
     if (!comment.trim()) return;
-    const lead = leads.find(l => l.id === id);
-    if (!lead) return;
-
-    // Add to comment history
-    const newComments = (lead.reply ? lead.reply + '\n---\n' : '') + comment;
     handleUpdateLead(id, { reply: comment });
-    setMsg('✓ Reply added');
+    setMsg('✓ Follow-up logged');
     setTimeout(() => setMsg(''), 1500);
   }
 
-  // Update setting
   function handleUpdateSetting(key, value) {
     setSettingsState({ ...settings, [key]: value });
-  }
-
-  // Update backend URL
-  function handleBackendUrlChange(url) {
-    setBackendUrlState(url);
-    setBackendUrl(url);
   }
 
   if (!loaded) {
     return (
       <div style={{
         fontFamily: "'DM Sans', system-ui, sans-serif",
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: COLORS.bg,
-        color: COLORS.muted
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        height: '100vh', background: COLORS.bg, color: COLORS.muted
       }}>
         Loading...
       </div>
@@ -142,87 +108,69 @@ function App() {
   return (
     <div style={{
       fontFamily: "'DM Sans', system-ui, sans-serif",
-      color: COLORS.text,
-      background: COLORS.bg,
-      minHeight: '100vh',
-      padding: '16px'
+      color: COLORS.text, background: COLORS.bg,
+      minHeight: '100vh', padding: 16
     }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+
         {/* Header */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 4 }}>
-            PracticeSight Outreach
+        <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 4 }}>
+              PracticeSight Outreach
+            </div>
+            <div style={{ fontSize: 12, color: COLORS.muted }}>
+              Outreach CRM · AI-powered reply generation · copy & paste workflow
+            </div>
           </div>
-          <div style={{ fontSize: 11, color: COLORS.muted, fontFamily: 'monospace' }}>
-            + Reddit Automation (Free tier LLMs only, $0 cost)
-          </div>
+          <SettingsPanel settings={settings} onUpdate={handleUpdateSetting} />
         </div>
 
         {/* Metrics */}
         <MetricsBar leads={leads} redditStats={redditStats} />
 
-        {/* Quick add */}
+        {/* Add lead */}
         <div style={{
-          background: '#fff',
-          border: `1px solid ${COLORS.border}`,
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 20
+          background: '#fff', border: `1px solid ${COLORS.border}`,
+          borderRadius: 12, padding: 16, marginBottom: 20
         }}>
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && handleAddLead()}
-            placeholder="Paste: Name (line 1) + their comment (line 2+). Ctrl+Enter to add."
-            rows={3}
+          <input
+            type="text"
+            placeholder="Name or handle (e.g. u/Visual-Few)"
+            value={inputName}
+            onChange={(e) => setInputName(e.target.value)}
             style={{
-              width: '100%',
-              padding: 12,
-              fontSize: 13,
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: 9,
-              fontFamily: 'inherit',
-              lineHeight: 1.5,
-              marginBottom: 10,
-              boxSizing: 'border-box',
-              resize: 'vertical'
+              width: '100%', padding: '10px 12px', fontSize: 13,
+              border: `1px solid ${COLORS.border}`, borderRadius: 8,
+              marginBottom: 8, boxSizing: 'border-box', fontFamily: 'inherit'
             }}
           />
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleAddLead}
-              style={{
-                flex: 1,
-                fontSize: 14,
-                fontWeight: 600,
-                padding: 12,
-                background: COLORS.primary,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 9,
-                cursor: 'pointer',
-                fontFamily: 'inherit'
-              }}
-            >
-              + Add lead (auto-detects stage)
-            </button>
-            <SettingsPanel
-              settings={settings}
-              onUpdate={handleUpdateSetting}
-              backendUrl={backendUrl}
-              onBackendUrlChange={handleBackendUrlChange}
-            />
-          </div>
+          <textarea
+            placeholder="Paste their comment here..."
+            value={inputComment}
+            onChange={(e) => setInputComment(e.target.value)}
+            onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && handleAddLead()}
+            rows={3}
+            style={{
+              width: '100%', padding: '10px 12px', fontSize: 13,
+              border: `1px solid ${COLORS.border}`, borderRadius: 8,
+              marginBottom: 10, boxSizing: 'border-box',
+              fontFamily: 'inherit', resize: 'vertical'
+            }}
+          />
+          <button onClick={handleAddLead} style={{
+            width: '100%', fontSize: 14, fontWeight: 600, padding: 12,
+            background: COLORS.primary, color: '#fff', border: 'none',
+            borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit'
+          }}>
+            + Add lead (auto-detects stage)
+          </button>
           {msg && (
             <div style={{
-              fontSize: 12,
-              marginTop: 10,
-              padding: '8px 12px',
-              borderRadius: 8,
+              fontSize: 12, marginTop: 10, padding: '8px 12px', borderRadius: 8,
               background: msg.includes('❌') ? '#FFE5E5' : msg.includes('⚠️') ? '#FFFBF0' : '#E5F5EB',
               color: msg.includes('❌') ? '#C44' : msg.includes('⚠️') ? '#854F0B' : '#166534',
-              textAlign: 'center',
-              fontWeight: 600
+              textAlign: 'center', fontWeight: 600
             }}>
               {msg}
             </div>
@@ -231,46 +179,29 @@ function App() {
 
         {/* Stage filters */}
         <div style={{
-          display: 'flex',
-          gap: 8,
-          marginBottom: 20,
-          overflowX: 'auto',
-          paddingBottom: 8
+          display: 'flex', gap: 8, marginBottom: 20,
+          overflowX: 'auto', paddingBottom: 8
         }}>
-          <button
-            onClick={() => setFilter('all')}
-            style={{
-              padding: '8px 16px',
-              border: filter === 'all' ? '2px solid #111' : '1px solid #DDD',
-              background: filter === 'all' ? '#111' : '#fff',
-              color: filter === 'all' ? '#fff' : '#555',
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap'
-            }}
-          >
+          <button onClick={() => setFilter('all')} style={{
+            padding: '8px 16px',
+            border: filter === 'all' ? '2px solid #111' : '1px solid #DDD',
+            background: filter === 'all' ? '#111' : '#fff',
+            color: filter === 'all' ? '#fff' : '#555',
+            borderRadius: 20, fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', whiteSpace: 'nowrap'
+          }}>
             All ({leads.length})
           </button>
           {STAGES.map(s => {
             const count = leads.filter(l => l.stage === s.id).length;
             return (
-              <button
-                key={s.id}
-                onClick={() => setFilter(s.id)}
-                style={{
-                  padding: '8px 14px',
-                  border: filter === s.id ? `2px solid ${s.color}` : '1px solid #DDD',
-                  background: filter === s.id ? s.color + '10' : '#fff',
-                  color: s.color,
-                  borderRadius: 20,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap'
-                }}
-              >
+              <button key={s.id} onClick={() => setFilter(s.id)} style={{
+                padding: '8px 14px',
+                border: filter === s.id ? `2px solid ${s.color}` : '1px solid #DDD',
+                background: filter === s.id ? s.color + '10' : '#fff',
+                color: s.color, borderRadius: 20, fontSize: 11,
+                fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap'
+              }}>
                 {s.label} ({count})
               </button>
             );
@@ -284,6 +215,7 @@ function App() {
           onDelete={handleDeleteLead}
           onReply={handleReply}
           filter={filter}
+          apiKey={settings.anthropicApiKey}
         />
       </div>
     </div>

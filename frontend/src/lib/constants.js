@@ -106,7 +106,8 @@ export const DEFAULT_SETTINGS = {
   minSecondsBetweenPosts: 2,
   minAccountAgeDays: 7,
   rateLimit: true,
-  backendUrl: ''
+  backendUrl: '',
+  anthropicApiKey: ''
 };
 
 // Default Reddit stats

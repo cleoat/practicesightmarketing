@@ -1,19 +1,85 @@
 import React, { useState } from 'react';
 import { STAGES, CHANNELS, COLORS } from '../lib/constants';
 
-export function LeadCard({ lead, onUpdate, onDelete, onReply }) {
-  const [showActions, setShowActions] = useState(false);
+async function generateReply(comment, name, apiKey) {
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true"
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 400,
+      messages: [{
+        role: "user",
+        content: `You are helping a therapy practice find new patients through Reddit outreach.
+
+Someone named "${name}" posted this comment:
+"${comment}"
+
+Write a short, helpful, human-sounding reply (2-4 sentences).
+- Sound like a real person, not a salesperson
+- Acknowledge their specific pain point
+- Mention PracticeSight handles insurance billing and revenue collection for therapy practices
+- End with a soft offer to answer questions or share more info
+- Do NOT use exclamation marks or sound like marketing copy
+- Do NOT start with "I" or "Great question"
+
+Reply only with the comment text, nothing else.`
+      }]
+    })
+  });
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+export function LeadCard({ lead, onUpdate, onDelete, onReply, apiKey }) {
+  const [generating, setGenerating] = useState(false);
+  const [generatedReply, setGeneratedReply] = useState(lead.reply || '');
+  const [copied, setCopied] = useState(false);
+  const [showFollowUp, setShowFollowUp] = useState(false);
+  const [followUpText, setFollowUpText] = useState('');
+
   const stage = STAGES.find(s => s.id === lead.stage);
   const channel = CHANNELS[lead.ch];
 
-  const handleStageChange = (e) => {
-    onUpdate(lead.id, { stage: e.target.value });
-  };
+  const handleStageChange = (e) => onUpdate(lead.id, { stage: e.target.value });
 
   const handleDelete = () => {
-    if (confirm(`Remove "${lead.name}"?`)) {
-      onDelete(lead.id);
+    if (confirm(`Remove "${lead.name}"?`)) onDelete(lead.id);
+  };
+
+  const handleGenerate = async () => {
+    if (!apiKey) {
+      alert('Add your Anthropic API key in Settings first.');
+      return;
     }
+    setGenerating(true);
+    try {
+      const reply = await generateReply(lead.comment, lead.name, apiKey);
+      setGeneratedReply(reply);
+      onUpdate(lead.id, { reply });
+    } catch (e) {
+      setGeneratedReply('Error generating reply. Check your API key in Settings.');
+    }
+    setGenerating(false);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(generatedReply);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleFollowUp = () => {
+    if (!followUpText.trim()) return;
+    onReply(lead.id, followUpText.trim());
+    setFollowUpText('');
+    setShowFollowUp(false);
   };
 
   return (
@@ -21,175 +87,111 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply }) {
       background: '#fff',
       border: `1px solid ${COLORS.border}`,
       borderLeft: `3px solid ${stage?.color || COLORS.muted}`,
-      borderRadius: '11px',
+      borderRadius: 11,
       overflow: 'hidden',
-      marginBottom: '8px'
+      marginBottom: 8
     }}>
       {/* Header */}
       <div style={{
         background: stage?.color || COLORS.muted,
         color: '#fff',
-        padding: '12px',
+        padding: 12,
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start'
       }}>
         <div>
-          <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '2px' }}>
-            {lead.name}
-          </div>
-          <div style={{ fontSize: '11px', opacity: 0.9 }}>
-            <span style={{ marginRight: '8px' }}>
-              {channel?.icon} {lead.ch}
-            </span>
-            · {lead.date}
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{lead.name}</div>
+          <div style={{ fontSize: 11, opacity: 0.9 }}>
+            <span style={{ marginRight: 8 }}>{channel?.icon} {lead.ch}</span>· {lead.date}
           </div>
         </div>
-        {lead.posted && (
-          <div style={{
-            fontSize: '10px',
-            background: 'rgba(255,255,255,0.2)',
-            padding: '3px 8px',
-            borderRadius: '4px'
-          }}>
-            ✓ Posted
-          </div>
-        )}
+        <button onClick={handleDelete} style={{
+          background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
+          borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 14
+        }}>×</button>
       </div>
 
       {/* Body */}
-      <div style={{ padding: '12px' }}>
-        {/* Comment */}
+      <div style={{ padding: 12 }}>
+        {/* Their comment */}
         <div style={{
-          background: COLORS.bg,
-          padding: '10px',
-          borderRadius: '8px',
-          marginBottom: '10px',
-          fontSize: '12px',
-          color: '#555',
-          lineHeight: '1.5',
-          fontStyle: 'italic'
+          background: COLORS.bg, padding: 10, borderRadius: 8, marginBottom: 10,
+          fontSize: 12, color: '#555', lineHeight: 1.5, fontStyle: 'italic'
         }}>
-          "{lead.comment.slice(0, 100)}{lead.comment.length > 100 ? '...' : ''}"
+          "{lead.comment.slice(0, 120)}{lead.comment.length > 120 ? '...' : ''}"
         </div>
 
-        {/* Reply (if exists) */}
-        {lead.reply && (
-          <div style={{
-            background: '#F0FDF4',
-            padding: '10px',
-            borderRadius: '8px',
-            marginBottom: '10px',
-            fontSize: '11px',
-            lineHeight: '1.5',
-            color: '#166534',
-            border: `1px solid #B8E5C8`
-          }}>
-            <strong>Reply:</strong> {lead.reply.slice(0, 100)}{lead.reply.length > 100 ? '...' : ''}
+        {/* Stage selector */}
+        <select value={lead.stage} onChange={handleStageChange} style={{
+          width: '100%', padding: '8px 10px', border: `1px solid ${COLORS.border}`,
+          borderRadius: 8, fontSize: 12, fontFamily: 'inherit', marginBottom: 10,
+          boxSizing: 'border-box'
+        }}>
+          {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+
+        {/* Generate reply button */}
+        <button onClick={handleGenerate} disabled={generating} style={{
+          width: '100%', padding: 10, marginBottom: 8,
+          background: generating ? '#9CA3AF' : COLORS.primary,
+          color: '#fff', border: 'none', borderRadius: 8,
+          cursor: generating ? 'not-allowed' : 'pointer',
+          fontSize: 13, fontWeight: 700, fontFamily: 'inherit'
+        }}>
+          {generating ? '⏳ Generating...' : '✨ Generate Reply'}
+        </button>
+
+        {/* Generated reply */}
+        {generatedReply && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{
+              background: '#F0FDF4', border: '1px solid #B8E5C8',
+              borderRadius: 8, padding: 10, fontSize: 12,
+              lineHeight: 1.6, color: '#166534', marginBottom: 6
+            }}>
+              {generatedReply}
+            </div>
+            <button onClick={handleCopy} style={{
+              width: '100%', padding: 8,
+              background: copied ? '#166534' : COLORS.success,
+              color: '#fff', border: 'none', borderRadius: 6,
+              cursor: 'pointer', fontSize: 12, fontWeight: 600
+            }}>
+              {copied ? '✓ Copied!' : '📋 Copy Reply'}
+            </button>
           </div>
         )}
 
-        {/* Stage selector */}
-        <select
-          value={lead.stage}
-          onChange={handleStageChange}
-          style={{
-            width: '100%',
-            padding: '8px 10px',
-            border: `1px solid ${COLORS.border}`,
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontFamily: 'inherit',
-            marginBottom: '10px',
-            boxSizing: 'border-box'
-          }}
-        >
-          {STAGES.map(s => (
-            <option key={s.id} value={s.id}>{s.label}</option>
-          ))}
-        </select>
+        {/* Log follow-up */}
+        <button onClick={() => setShowFollowUp(!showFollowUp)} style={{
+          width: '100%', padding: '6px 10px',
+          background: 'transparent', color: COLORS.muted,
+          border: `1px solid ${COLORS.border}`, borderRadius: 6,
+          cursor: 'pointer', fontSize: 11
+        }}>
+          {showFollowUp ? '▲ Hide' : '+ Log follow-up comment'}
+        </button>
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            onClick={() => setShowActions(!showActions)}
-            style={{
-              flex: 1,
-              padding: '8px',
-              background: COLORS.secondary,
-              color: '#fff',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600
-            }}
-          >
-            💬 Reply
-          </button>
-          <button
-            onClick={handleDelete}
-            style={{
-              flex: 1,
-              padding: '8px',
-              background: '#FFE5E5',
-              color: COLORS.error,
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        {/* Reply input (if toggled) */}
-        {showActions && (
-          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: `1px solid ${COLORS.border}` }}>
+        {showFollowUp && (
+          <div style={{ marginTop: 8 }}>
             <textarea
+              value={followUpText}
+              onChange={(e) => setFollowUpText(e.target.value)}
               placeholder="Paste their next comment..."
               rows={2}
               style={{
-                width: '100%',
-                padding: '8px',
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: '6px',
-                fontSize: '11px',
-                fontFamily: 'inherit',
-                marginBottom: '8px',
-                boxSizing: 'border-box',
-                resize: 'vertical'
-              }}
-              onKeyDown={(e) => {
-                if (e.ctrlKey && e.key === 'Enter') {
-                  onReply(lead.id, e.target.value);
-                  e.target.value = '';
-                  setShowActions(false);
-                }
+                width: '100%', padding: 8, border: `1px solid ${COLORS.border}`,
+                borderRadius: 6, fontSize: 11, fontFamily: 'inherit',
+                marginBottom: 6, boxSizing: 'border-box', resize: 'vertical'
               }}
             />
-            <button
-              onClick={(e) => {
-                const textarea = e.currentTarget.parentElement.querySelector('textarea');
-                onReply(lead.id, textarea.value);
-                textarea.value = '';
-                setShowActions(false);
-              }}
-              style={{
-                width: '100%',
-                padding: '6px',
-                background: COLORS.success,
-                color: '#fff',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600
-              }}
-            >
-              ✓ Generate reply (Ctrl+Enter)
+            <button onClick={handleFollowUp} style={{
+              width: '100%', padding: 6, background: COLORS.secondary,
+              color: '#fff', border: 'none', borderRadius: 6,
+              cursor: 'pointer', fontSize: 11, fontWeight: 600
+            }}>
+              Save follow-up
             </button>
           </div>
         )}
