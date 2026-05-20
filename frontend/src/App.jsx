@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import MetricsBar from './components/MetricsBar';
+import ActionQueue from './components/ActionQueue';
 import PipelineView from './components/PipelineView';
 import SettingsPanel from './components/SettingsPanel';
 import CommunitiesPanel, { COMMUNITIES } from './components/CommunitiesPanel';
@@ -147,29 +148,42 @@ function App() {
   }
 
   const inputStyle = {
-    width: '100%', padding: '9px 12px', fontSize: 13,
+    width: '100%', padding: '12px 14px', fontSize: 15,
     border: `1px solid ${COLORS.border}`, borderRadius: 8,
-    boxSizing: 'border-box', fontFamily: 'inherit'
+    boxSizing: 'border-box', fontFamily: 'inherit',
+    color: COLORS.text,
+    background: '#fff'
   };
 
   return (
     <div style={{
       fontFamily: "'DM Sans', system-ui, sans-serif",
       color: COLORS.text, background: COLORS.bg,
-      minHeight: '100vh', padding: 16
+      minHeight: '100vh', padding: 20
     }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1320, margin: '0 auto' }}>
 
         {/* Header */}
-        <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{
+          marginBottom: 20,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          gap: 16,
+          padding: '18px 20px',
+          background: '#fff',
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 8,
+          boxShadow: '0 12px 30px rgba(15, 23, 42, 0.06)'
+        }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 4 }}>
+            <div style={{ fontSize: 30, fontWeight: 900, marginBottom: 5 }}>
               PracticeSight Outreach
             </div>
-            <div style={{ fontSize: 12, color: COLORS.muted }}>
+            <div style={{ fontSize: 15, color: COLORS.muted, fontWeight: 700 }}>
               Find billing-frustrated therapists → generate reply → copy & paste → track
             </div>
-            <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 3 }}>
+            <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 6, fontWeight: 700 }}>
               Build: {APP_BUILD_LABEL}
             </div>
           </div>
@@ -178,6 +192,9 @@ function App() {
 
         {/* Metrics */}
         <MetricsBar leads={leads} redditStats={redditStats} />
+
+        {/* Action Queue */}
+        <ActionQueue leads={leads} />
 
         {/* Communities */}
         <CommunitiesPanel onSelect={handleCommunitySelect} />
@@ -191,14 +208,15 @@ function App() {
         {/* Add lead */}
         <div style={{
           background: '#fff', border: `1px solid ${COLORS.border}`,
-          borderRadius: 12, padding: 16, marginBottom: 20
+          borderRadius: 8, padding: 18, marginBottom: 20,
+          boxShadow: '0 10px 26px rgba(15, 23, 42, 0.06)'
         }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+          <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text, marginBottom: 12 }}>
             Add a lead
           </div>
 
           {/* Row 1: Name + Channel + Source */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 10, marginBottom: 10 }}>
             <input
               type="text"
               placeholder="Name or handle (e.g. u/Visual-Few)"
@@ -214,7 +232,7 @@ function App() {
                   key={ch}
                   onClick={() => setInputChannel(ch)}
                   style={{
-                    padding: '7px 12px', fontSize: 12, fontWeight: 600,
+                    padding: '10px 13px', fontSize: 14, fontWeight: 800,
                     border: inputChannel === ch ? `2px solid ${CHANNELS[ch].color}` : `1px solid ${COLORS.border}`,
                     background: inputChannel === ch ? CHANNELS[ch].color + '15' : '#fff',
                     color: inputChannel === ch ? CHANNELS[ch].color : COLORS.muted,
@@ -242,7 +260,7 @@ function App() {
             placeholder="Thread URL (optional — paste link to their post so you can find it later)"
             value={inputThreadUrl}
             onChange={(e) => handleThreadUrlChange(e.target.value)}
-            style={{ ...inputStyle, marginBottom: 8, fontSize: 12, color: COLORS.secondary }}
+            style={{ ...inputStyle, marginBottom: 10, color: COLORS.secondary }}
           />
 
           {/* Row 3: Comment */}
@@ -251,21 +269,21 @@ function App() {
             value={inputComment}
             onChange={(e) => setInputComment(e.target.value)}
             onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && handleAddLead()}
-            rows={3}
+            rows={4}
             style={{ ...inputStyle, marginBottom: 10, resize: 'vertical' }}
           />
 
           <button onClick={handleAddLead} style={{
-            width: '100%', fontSize: 14, fontWeight: 600, padding: 12,
+            width: '100%', fontSize: 16, fontWeight: 900, padding: 14,
             background: COLORS.primary, color: '#fff', border: 'none',
-            borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit'
+            borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit'
           }}>
             + Add lead (Ctrl+Enter)
           </button>
 
           {msg && (
             <div style={{
-              fontSize: 12, marginTop: 10, padding: '8px 12px', borderRadius: 8,
+              fontSize: 14, marginTop: 10, padding: '10px 12px', borderRadius: 8,
               background: msg.includes('❌') ? '#FFE5E5' : msg.includes('⚠️') ? '#FFFBF0' : '#E5F5EB',
               color: msg.includes('❌') ? '#C44' : msg.includes('⚠️') ? '#854F0B' : '#166534',
               textAlign: 'center', fontWeight: 600
@@ -281,11 +299,11 @@ function App() {
           overflowX: 'auto', paddingBottom: 8
         }}>
           <button onClick={() => setFilter('all')} style={{
-            padding: '8px 16px',
+            padding: '10px 16px',
             border: filter === 'all' ? '2px solid #111' : '1px solid #DDD',
             background: filter === 'all' ? '#111' : '#fff',
             color: filter === 'all' ? '#fff' : '#555',
-            borderRadius: 20, fontSize: 12, fontWeight: 600,
+            borderRadius: 8, fontSize: 14, fontWeight: 800,
             cursor: 'pointer', whiteSpace: 'nowrap'
           }}>
             All ({leads.length})
@@ -294,11 +312,11 @@ function App() {
             const count = leads.filter(l => l.stage === s.id).length;
             return (
               <button key={s.id} onClick={() => setFilter(s.id)} style={{
-                padding: '8px 14px',
+                padding: '10px 14px',
                 border: filter === s.id ? `2px solid ${s.color}` : '1px solid #DDD',
                 background: filter === s.id ? s.color + '10' : '#fff',
-                color: s.color, borderRadius: 20, fontSize: 11,
-                fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap'
+                color: s.color, borderRadius: 8, fontSize: 14,
+                fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap'
               }}>
                 {s.label} ({count})
               </button>

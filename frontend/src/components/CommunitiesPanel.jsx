@@ -1,496 +1,443 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { COLORS } from '../lib/constants';
 import { CUSTOM_COMMUNITIES_STORAGE_KEY } from '../lib/communityRules';
 
+const VERIFIED_AT = 'May 20, 2026';
+
 export const COMMUNITIES = [
-  // ── REDDIT ────────────────────────────────────────────────────────
   {
-    platform: 'reddit', color: '#E05929', icon: '◉',
+    platform: 'reddit', color: '#D9480F', icon: 'R',
     name: 'r/therapists',
-    url: 'https://reddit.com/r/therapists/new',
-    size: '180k members', frequency: '1 reply / 3 days', safe: false,
-    rule: 'ZERO product mentions — pure peer support only or instant ban',
-    search: 'billing OR insurance OR "getting paid" OR "unbilled" OR credentialing',
-    tip: 'Reply like a fellow therapist sharing what worked for you. Never say "we" or mention any company.',
+    url: 'https://www.reddit.com/r/therapists/',
+    verifiedAt: VERIFIED_AT,
+    size: '203k members',
+    frequency: '1 reply / 3 days',
+    safe: false,
+    rule: 'Strict professional community. Peer support only. No product names, links, DMs, or vendor framing.',
+    search: 'billing OR insurance OR unbilled OR credentialing OR SimplePractice',
+    tip: 'Use this for listening and pure support. Treat every reply like a colleague-to-colleague comment.',
   },
   {
-    platform: 'reddit', color: '#E05929', icon: '◉',
+    platform: 'reddit', color: '#D9480F', icon: 'R',
     name: 'r/privatepractice',
-    url: 'https://reddit.com/r/privatepractice/new',
-    size: '45k members', frequency: '1 reply / 2 days', safe: true,
-    rule: 'Tool mentions OK if genuinely helpful and not the main point',
-    search: 'billing OR insurance OR EHR OR "claim denial" OR "ERA" OR revenue',
-    tip: 'Best subreddit for eventually mentioning PracticeSight — members expect practical tool advice.',
+    url: 'https://www.reddit.com/r/privatepractice/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: '1 reply / 2 days',
+    safe: true,
+    rule: 'Business-focused community. Tool mentions may fit only after real context and value.',
+    search: 'billing OR insurance OR EHR OR claims OR revenue',
+    tip: 'Best built-in Reddit target for later-stage PracticeSight mentions.',
   },
   {
-    platform: 'reddit', color: '#E05929', icon: '◉',
+    platform: 'reddit', color: '#D9480F', icon: 'R',
+    name: 'r/SimplePractice',
+    url: 'https://www.reddit.com/r/SimplePractice/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: 'Monitor weekly',
+    safe: true,
+    rule: 'Product-specific subreddit. Stay useful and specific; do not spam links.',
+    search: 'billing OR claims OR invoice OR payment OR managed billing',
+    tip: 'Highly targeted when people are already talking about SimplePractice billing friction.',
+  },
+  {
+    platform: 'reddit', color: '#D9480F', icon: 'R',
+    name: 'r/SoloPrivatePractice',
+    url: 'https://www.reddit.com/r/SoloPrivatePractice/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: 'Monitor weekly',
+    safe: true,
+    rule: 'Solo practice focus. Keep replies practical, modest, and non-salesy.',
+    search: 'billing OR insurance OR claims OR SimplePractice',
+    tip: 'Small but relevant. Useful for solo clinicians doing their own admin.',
+  },
+  {
+    platform: 'reddit', color: '#D9480F', icon: 'R',
     name: 'r/socialwork',
-    url: 'https://reddit.com/r/socialwork/new',
-    size: '120k members', frequency: '1 reply / 3 days', safe: false,
-    rule: 'No promotion — Medicaid billing pain is very common here',
-    search: 'billing OR Medicaid OR insurance OR "not getting paid" OR credentialing',
-    tip: 'Social workers face brutal billing issues. Pure empathy and practical advice works.',
+    url: 'https://www.reddit.com/r/socialwork/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: '1 reply / 3 days',
+    safe: false,
+    rule: 'No promotion. Social work community, not a product channel.',
+    search: 'billing OR Medicaid OR insurance OR reimbursement OR credentialing',
+    tip: 'Good for empathy and practical process advice. Never mention PracticeSight here by default.',
   },
   {
-    platform: 'reddit', color: '#E05929', icon: '◉',
-    name: 'r/psychotherapy',
-    url: 'https://reddit.com/r/psychotherapy/new',
-    size: '40k members', frequency: '1 reply / 3 days', safe: false,
-    rule: 'Clinical discussion focus — billing pain posts do appear',
-    search: 'billing OR insurance OR "private pay" OR "credentialing" OR EHR',
-    tip: 'More clinical than r/therapists. Billing posts get fewer replies but are very targeted.',
-  },
-  {
-    platform: 'reddit', color: '#E05929', icon: '◉',
+    platform: 'reddit', color: '#D9480F', icon: 'R',
     name: 'r/counseling',
-    url: 'https://reddit.com/r/counseling/new',
-    size: '25k members', frequency: '1 reply / week', safe: false,
-    rule: 'No promotion — LPC/LPCC community',
-    search: 'billing OR insurance OR "private practice" OR credentialing',
-    tip: 'LPCs and LPCCs — credentialing and insurance pain is a regular topic.',
+    url: 'https://www.reddit.com/r/counseling/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: 'Monitor weekly',
+    safe: false,
+    rule: 'No promotion. Keep replies broad, professional, and helpful.',
+    search: 'billing OR insurance OR private practice OR credentialing',
+    tip: 'Use for early trust-building only.',
   },
   {
-    platform: 'reddit', color: '#E05929', icon: '◉',
+    platform: 'reddit', color: '#D9480F', icon: 'R',
     name: 'r/LCSW',
-    url: 'https://reddit.com/r/LCSW/new',
-    size: '28k members', frequency: '1 reply / week', safe: false,
-    rule: 'No promotion — focused community',
-    search: 'billing OR insurance OR "panel" OR credentialing OR "getting reimbursed"',
-    tip: 'Smaller but highly targeted. LCSWs deal with credentialing nightmares.',
+    url: 'https://www.reddit.com/r/LCSW/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: 'Monitor weekly',
+    safe: false,
+    rule: 'No promotion. Focus on payer/process experience.',
+    search: 'billing OR insurance OR panel OR credentialing OR reimbursement',
+    tip: 'LCSWs often run into payer and paneling pain. Practical comments work best.',
   },
   {
-    platform: 'reddit', color: '#E05929', icon: '◉',
-    name: 'r/MFT',
-    url: 'https://reddit.com/r/MFT/new',
-    size: '8k members', frequency: '1 reply / week', safe: false,
-    rule: 'No promotion — small tight community',
-    search: 'billing OR insurance OR "private practice" OR "paneling"',
-    tip: 'Marriage & Family Therapists. Small but billing complaints are frequent.',
-  },
-  {
-    platform: 'reddit', color: '#E05929', icon: '◉',
+    platform: 'reddit', color: '#D9480F', icon: 'R',
     name: 'r/ABA',
-    url: 'https://reddit.com/r/ABA/new',
-    size: '18k members', frequency: '1 reply / week', safe: false,
-    rule: 'No promotion — ABA billing is uniquely complex',
-    search: 'billing OR insurance OR "prior auth" OR "claim" OR revenue',
-    tip: 'ABA billing is the most complex in therapy — huge pain point.',
-  },
-  {
-    platform: 'reddit', color: '#E05929', icon: '◉',
-    name: 'r/medicalbilling',
-    url: 'https://reddit.com/r/medicalbilling/new',
-    size: '15k members', frequency: '1 reply / week', safe: true,
-    rule: 'Tool mentions OK — billing professionals expect software discussion',
-    search: 'therapy OR mental health OR SimplePractice OR ERA OR "claim denial"',
-    tip: 'Billing professionals who work with therapy practices. More receptive to tool mentions.',
-  },
-
-  // ── FACEBOOK ─────────────────────────────────────────────────────
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Therapists in Private Practice',
-    search: 'Therapists in Private Practice',
-    size: '200k+ members', frequency: '1 reply / day', safe: true,
-    rule: 'More lenient — product mentions OK if genuinely helpful',
-    tip: 'Most active therapy Facebook group. Search "billing" inside the group.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Private Practice Therapists',
-    search: 'Private Practice Therapists',
-    size: '80k members', frequency: '1 reply / day', safe: true,
-    rule: 'Product mentions OK in context',
-    tip: 'Very active billing discussion threads. Good warm leads here.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Therapist Entrepreneurs',
-    search: 'Therapist Entrepreneurs',
-    size: '60k members', frequency: '1-2 replies / day', safe: true,
-    rule: 'Business tools welcome — most receptive audience',
-    tip: 'Most open to tool recommendations. Business-minded practitioners.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Private Practice Startup',
-    search: 'Private Practice Startup',
-    size: '40k members', frequency: '1 reply / day', safe: true,
-    rule: 'New practice owners — very open to billing tools',
-    tip: 'Fresh practices have the most billing pain. High conversion potential.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Mental Health Private Practice Owners',
-    search: 'Mental Health Private Practice Owners',
-    size: '45k members', frequency: '1 reply / day', safe: true,
-    rule: 'Business focus — billing tool mentions welcome',
-    tip: 'Owners actively managing billing. High intent audience.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'SimplePractice Users Community',
-    search: 'SimplePractice Users',
-    size: '35k members', frequency: '1 reply / day', safe: true,
-    rule: 'EHR-focused — billing add-ons very relevant here',
-    tip: 'These are exactly your users. They know SimplePractice and are frustrated with its billing reporting.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Insurance Billing for Therapists',
-    search: 'Insurance Billing for Therapists',
-    size: '30k members', frequency: '1-2 replies / day', safe: true,
-    rule: 'Billing-specific group — tools are expected and welcome',
-    tip: 'The most targeted group. These people are actively wrestling with insurance billing.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'The Group Practice Exchange',
-    search: 'The Group Practice Exchange',
-    size: '35k members', frequency: '1 reply / day', safe: true,
-    rule: 'Group practice focus — billing across multiple clinicians',
-    tip: 'Group practices have amplified billing pain — multiple clinicians, multiple payers.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Counselors in Private Practice',
-    search: 'Counselors in Private Practice',
-    size: '25k members', frequency: '1 reply / day', safe: true,
-    rule: 'LPC/LPCC community — product mentions OK with context',
-    tip: 'Counselors starting private practice face heavy credentialing pain.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Social Workers in Private Practice',
-    search: 'Social Workers in Private Practice',
-    size: '22k members', frequency: '1 reply / day', safe: false,
-    rule: 'More guarded — build trust with pure value first',
-    tip: 'LCSW private practice community. Medicaid billing pain is common.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'LMFT Private Practice Network',
-    search: 'LMFT Private Practice Network',
-    size: '18k members', frequency: '1 reply / 2 days', safe: true,
-    rule: 'Collaborative tone — tools welcome if practical',
-    tip: 'Marriage & Family Therapists. Paneling and credentialing frustrations are very common.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Psychologists in Private Practice',
-    search: 'Psychologists in Private Practice',
-    size: '20k members', frequency: '1 reply / 2 days', safe: true,
-    rule: 'Professional community — tools OK if framed clinically',
-    tip: 'PhDs in private practice. High out-of-pocket mix but still deal with insurance.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Private Practice Marketing for Therapists',
-    search: 'Private Practice Marketing for Therapists',
-    size: '28k members', frequency: '1-2 replies / day', safe: true,
-    rule: 'Marketing and business tools welcome',
-    tip: 'Growth-focused therapists. Frame billing efficiency as business optimization.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Insurance Credentialing for Mental Health',
-    search: 'Insurance Credentialing Mental Health Professionals',
-    size: '20k members', frequency: '1 reply / day', safe: true,
-    rule: 'Credentialing-focused — billing tool mentions very relevant',
-    tip: 'Therapists in the paneling process. They will hit billing problems immediately after.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'ABA Therapy Business Owners',
-    search: 'ABA Therapy Business Owners',
-    size: '12k members', frequency: '1 reply / 2 days', safe: true,
-    rule: 'Business owners — billing tools welcome',
-    tip: 'ABA has the most complex billing in therapy. Very high pain, very open to solutions.',
-  },
-  {
-    platform: 'facebook', color: '#1877F2', icon: 'f',
-    name: 'Profitable Practice',
-    search: 'Profitable Practice therapists',
-    size: '15k members', frequency: '1 reply / 2 days', safe: true,
-    rule: 'Revenue and billing focus — tools very welcome',
-    tip: 'Revenue-focused group. Billing recovery tools are core to their mission.',
-  },
-
-  // ── X / TWITTER ────────────────────────────────────────────────────
-  {
-    platform: 'x', color: '#000', icon: '𝕏',
-    name: '#therapist billing',
-    url: 'https://twitter.com/search?q=%23therapist+billing+insurance&f=live',
-    size: 'Live feed', frequency: 'Reply freely', safe: true,
-    rule: 'Can mention tools — Twitter is lenient',
-    tip: 'Search live for recent billing complaints. Replies pre-fill via button.',
-  },
-  {
-    platform: 'x', color: '#000', icon: '𝕏',
-    name: '#privatepractice',
-    url: 'https://twitter.com/search?q=%23privatepractice+billing&f=live',
-    size: 'Live feed', frequency: 'Reply freely', safe: true,
-    rule: 'Professional tone — product mentions fine',
-    tip: 'Active hashtag. Billing posts get good engagement.',
-  },
-  {
-    platform: 'x', color: '#000', icon: '𝕏',
-    name: '#therapistproblems billing',
-    url: 'https://twitter.com/search?q=%23therapistproblems+billing+insurance&f=live',
-    size: 'Live feed', frequency: 'Reply freely', safe: true,
-    rule: 'Casual tone — empathy works well here',
-    tip: 'Therapists venting about billing. Very warm leads.',
-  },
-
-  // ── LINKEDIN ───────────────────────────────────────────────────────
-  {
-    platform: 'linkedin', color: '#0A66C2', icon: 'in',
-    name: 'Therapist billing posts',
-    url: 'https://www.linkedin.com/search/results/content/?keywords=therapist%20billing%20insurance',
-    size: 'Content search', frequency: 'Reply freely', safe: true,
-    rule: 'Most lenient — professional product mentions are normal',
-    tip: 'LinkedIn is the safest for mentioning PracticeSight directly.',
-  },
-  {
-    platform: 'linkedin', color: '#0A66C2', icon: 'in',
-    name: '#privatepractice feed',
-    url: 'https://www.linkedin.com/search/results/content/?keywords=%23privatepractice+billing',
-    size: 'Hashtag feed', frequency: 'Reply freely', safe: true,
-    rule: 'Professional audience — tools welcome',
-    tip: 'Therapists complaining about billing on LinkedIn are your warmest leads.',
-  },
-  {
-    platform: 'linkedin', color: '#0A66C2', icon: 'in',
-    name: 'Mental Health Professionals group',
-    url: 'https://www.linkedin.com/search/results/groups/?keywords=mental+health+professionals+private+practice',
-    size: 'Groups search', frequency: 'Reply freely', safe: true,
-    rule: 'Professional group — tools welcome with business framing',
-    tip: 'LinkedIn groups have less competition than Facebook. Easier to stand out.',
+    url: 'https://www.reddit.com/r/ABA/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: 'Monitor weekly',
+    safe: false,
+    rule: 'No promotion. ABA billing is complex; lead with concrete experience.',
+    search: 'billing OR insurance OR prior auth OR claim OR revenue',
+    tip: 'A focused place to learn billing language and pain points before replying.',
   },
 ];
 
 function loadCustom() {
-  try { return JSON.parse(localStorage.getItem(CUSTOM_COMMUNITIES_STORAGE_KEY) || '[]'); } catch { return []; }
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CUSTOM_COMMUNITIES_STORAGE_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
 }
+
 function saveCustom(list) {
   localStorage.setItem(CUSTOM_COMMUNITIES_STORAGE_KEY, JSON.stringify(list));
 }
 
 const PLATFORM_META = {
-  reddit:   { color: '#E05929', icon: '◉' },
-  facebook: { color: '#1877F2', icon: 'f' },
-  x:        { color: '#000',    icon: '𝕏' },
-  linkedin: { color: '#0A66C2', icon: 'in' },
-  other:    { color: '#7C3AED', icon: '◆' },
+  reddit: { color: '#D9480F', icon: 'R', label: 'Reddit' },
+  facebook: { color: '#1864AB', icon: 'f', label: 'Facebook' },
+  x: { color: '#111827', icon: 'X', label: 'X' },
+  linkedin: { color: '#0A66C2', icon: 'in', label: 'LinkedIn' },
+  other: { color: '#7C3AED', icon: '*', label: 'Other' },
 };
 
-const BLANK_FORM = { name: '', platform: 'facebook', urlOrSearch: '', size: '', safe: true, tip: '' };
+const BLANK_FORM = {
+  name: '',
+  platform: 'facebook',
+  url: '',
+  size: '',
+  safe: false,
+  tip: '',
+};
+
+function isValidUrl(value) {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol);
+  } catch {
+    return false;
+  }
+}
+
+function validateCommunity(form) {
+  const url = form.url.trim();
+  if (!form.name.trim()) return 'Name is required.';
+  if (!url) return 'A direct group or community URL is required.';
+  if (!isValidUrl(url)) return 'Use a full URL starting with https://.';
+
+  const lower = url.toLowerCase();
+  if (form.platform === 'facebook' && !lower.includes('facebook.com/groups/')) {
+    return 'Facebook entries need a direct facebook.com/groups/ URL.';
+  }
+  if (form.platform === 'reddit' && !lower.includes('reddit.com/r/')) {
+    return 'Reddit entries need a direct reddit.com/r/ URL.';
+  }
+
+  return '';
+}
 
 function CommunityRow({ c, onSelect, onDelete }) {
   const [expanded, setExpanded] = useState(false);
   const meta = PLATFORM_META[c.platform] || PLATFORM_META.other;
 
   const handleOpen = () => {
-    if (c.platform === 'facebook' || (!c.url && c.search)) {
-      window.open(
-        `https://www.facebook.com/groups/search/?q=${encodeURIComponent(c.search || c.name)}`,
-        '_blank', 'noopener,noreferrer'
-      );
-    } else if (c.url) {
-      window.open(c.url, '_blank', 'noopener,noreferrer');
-    }
+    if (c.url) window.open(c.url, '_blank', 'noopener,noreferrer');
     if (onSelect) onSelect(c.name, c.platform);
   };
 
   return (
-    <div style={{ borderBottom: `1px solid ${COLORS.border}`, padding: '10px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+      gap: 14,
+      padding: '14px 16px',
+      borderBottom: `1px solid ${COLORS.border}`,
+      alignItems: 'center',
+      background: '#fff',
+    }}>
+      <div style={{ minWidth: 0 }}>
         <button
           onClick={handleOpen}
           style={{
-            padding: '5px 12px', fontSize: 12, fontWeight: 700,
-            background: (c.color || meta.color) + '15',
-            color: (c.color || meta.color) === '#000' ? '#333' : (c.color || meta.color),
-            border: `1px solid ${(c.color || meta.color)}30`,
-            borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit',
-            whiteSpace: 'nowrap', flexShrink: 0
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '9px 12px',
+            fontSize: 14,
+            fontWeight: 800,
+            background: meta.color + '14',
+            color: meta.color,
+            border: `1px solid ${meta.color}35`,
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            maxWidth: '100%',
           }}
         >
-          {c.icon || meta.icon} {c.name} ↗
+          <span>{c.icon || meta.icon}</span>
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+          <span aria-hidden="true">↗</span>
         </button>
-
-        <span style={{
-          fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
-          background: c.safe ? '#E5F5EB' : '#FFF5EB',
-          color: c.safe ? '#166534' : '#854F0B', flexShrink: 0
-        }}>
-          {c.safe ? '✓ can mention' : '⚠ no promotion'}
-        </span>
-
-        {c.custom && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
           <span style={{
-            fontSize: 10, padding: '2px 7px', borderRadius: 10,
-            background: '#F3E8FF', color: '#7C3AED', fontWeight: 700, flexShrink: 0
-          }}>custom</span>
-        )}
-
-        {c.size && <span style={{ fontSize: 11, color: COLORS.muted, flexShrink: 0 }}>{c.size}</span>}
-        {c.frequency && <span style={{ fontSize: 11, color: COLORS.muted, flexShrink: 0 }}>· {c.frequency}</span>}
-
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, flexShrink: 0 }}>
-          {(c.rule || c.tip) && (
-            <button
-              onClick={() => setExpanded(!expanded)}
-              style={{
-                fontSize: 10, color: COLORS.muted, background: 'none',
-                border: 'none', cursor: 'pointer', padding: '2px 6px'
-              }}
-            >
-              {expanded ? '▲' : '▼ tips'}
-            </button>
-          )}
-          {c.custom && onDelete && (
-            <button
-              onClick={() => onDelete(c.name)}
-              style={{
-                fontSize: 12, color: '#C44', background: 'none',
-                border: 'none', cursor: 'pointer', padding: '2px 4px'
-              }}
-              title="Remove"
-            >×</button>
+            fontSize: 12,
+            fontWeight: 800,
+            padding: '4px 7px',
+            borderRadius: 6,
+            background: '#ECFDF5',
+            color: COLORS.success,
+          }}>
+            verified link
+          </span>
+          <span style={{
+            fontSize: 12,
+            fontWeight: 800,
+            padding: '4px 7px',
+            borderRadius: 6,
+            background: c.safe ? '#DBEAFE' : '#FEF3C7',
+            color: c.safe ? COLORS.secondary : COLORS.warning,
+          }}>
+            {c.safe ? 'can mention later' : 'no promotion'}
+          </span>
+          {c.custom && (
+            <span style={{
+              fontSize: 12,
+              fontWeight: 800,
+              padding: '4px 7px',
+              borderRadius: 6,
+              background: '#F3E8FF',
+              color: '#7C3AED',
+            }}>
+              custom
+            </span>
           )}
         </div>
       </div>
 
-      {expanded && (
-        <div style={{ marginTop: 8, paddingLeft: 4 }}>
-          {c.rule && (
-            <div style={{
-              fontSize: 11, color: '#555', marginBottom: 6,
-              padding: '6px 10px', background: '#FFFBF0',
-              borderLeft: '3px solid #F59E0B', borderRadius: '0 6px 6px 0'
-            }}>
-              <strong>Rule:</strong> {c.rule}
-            </div>
-          )}
-          {c.tip && (
-            <div style={{ fontSize: 11, color: '#555', marginBottom: 6 }}>
-              💡 {c.tip}
-            </div>
-          )}
-          {c.search && (
-            <div style={{
-              fontSize: 10, fontFamily: 'monospace', color: COLORS.muted,
-              padding: '4px 8px', background: COLORS.bg, borderRadius: 4
-            }}>
-              Search: {c.search}
-            </div>
-          )}
+      <div style={{ color: COLORS.text, minWidth: 0 }}>
+        <div style={{ fontSize: 14, lineHeight: 1.45, fontWeight: 700, marginBottom: 4 }}>
+          {c.rule}
         </div>
-      )}
+        <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.45 }}>
+          {c.tip}
+        </div>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8, fontSize: 12, color: COLORS.muted }}>
+          {c.size && <span>{c.size}</span>}
+          {c.frequency && <span>{c.frequency}</span>}
+          <span>Verified {c.verifiedAt || 'manually'}</span>
+        </div>
+        {expanded && c.search && (
+          <div style={{
+            marginTop: 10,
+            padding: '9px 10px',
+            background: COLORS.bg,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 8,
+            fontSize: 13,
+            color: COLORS.text,
+            lineHeight: 1.4,
+          }}>
+            Search terms: {c.search}
+          </div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+        {c.search && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            style={{
+              padding: '8px 10px',
+              fontSize: 13,
+              fontWeight: 700,
+              color: COLORS.secondary,
+              background: '#EFF6FF',
+              border: '1px solid #BFDBFE',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {expanded ? 'Hide' : 'Terms'}
+          </button>
+        )}
+        {c.custom && onDelete && (
+          <button
+            onClick={() => onDelete(c.name)}
+            style={{
+              padding: '8px 10px',
+              fontSize: 13,
+              fontWeight: 700,
+              color: COLORS.error,
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Remove
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 function AddCommunityForm({ onSave, onCancel }) {
   const [form, setForm] = useState(BLANK_FORM);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const [error, setError] = useState('');
+  const set = (key, value) => {
+    setError('');
+    setForm(current => ({ ...current, [key]: value }));
+  };
 
   const handleSave = () => {
-    if (!form.name.trim()) return;
+    const validation = validateCommunity(form);
+    if (validation) {
+      setError(validation);
+      return;
+    }
+
+    const meta = PLATFORM_META[form.platform] || PLATFORM_META.other;
     onSave({
-      ...form,
       name: form.name.trim(),
-      url: form.platform !== 'facebook' ? form.urlOrSearch.trim() : undefined,
-      search: form.platform === 'facebook' ? form.urlOrSearch.trim() || form.name.trim() : undefined,
-      color: PLATFORM_META[form.platform]?.color || '#7C3AED',
-      icon: PLATFORM_META[form.platform]?.icon || '◆',
+      platform: form.platform,
+      url: form.url.trim(),
+      size: form.size.trim() || 'Manual entry',
+      safe: form.safe,
+      tip: form.tip.trim() || 'User-verified community. Check group rules before mentioning PracticeSight.',
+      rule: form.safe
+        ? 'Manual verified link. Product mention allowed only if group rules and context support it.'
+        : 'Manual verified link. Default to no-promotion until rules are confirmed.',
+      verifiedAt: 'manual',
+      color: meta.color,
+      icon: meta.icon,
       custom: true,
     });
+    setForm(BLANK_FORM);
   };
 
   const inputStyle = {
-    width: '100%', padding: '6px 9px', fontSize: 12,
-    border: `1px solid ${COLORS.border}`, borderRadius: 6,
-    fontFamily: 'inherit', boxSizing: 'border-box'
+    width: '100%',
+    padding: '10px 12px',
+    fontSize: 14,
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 8,
+    fontFamily: 'inherit',
+    boxSizing: 'border-box',
+    background: '#fff',
+    color: COLORS.text,
   };
 
   return (
     <div style={{
-      padding: '14px 16px', background: '#FAFAF8',
-      borderTop: `1px solid ${COLORS.border}`
+      padding: 16,
+      background: '#F8FAFC',
+      borderTop: `1px solid ${COLORS.border}`,
     }}>
-      <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10, color: COLORS.text }}>
-        Add custom community
-      </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
         <input
           style={inputStyle}
-          placeholder="Community name *"
+          placeholder="Community name"
           value={form.name}
-          onChange={e => set('name', e.target.value)}
+          onChange={event => set('name', event.target.value)}
         />
         <select
           style={inputStyle}
           value={form.platform}
-          onChange={e => set('platform', e.target.value)}
+          onChange={event => set('platform', event.target.value)}
         >
-          <option value="facebook">f Facebook</option>
-          <option value="reddit">◉ Reddit</option>
-          <option value="x">𝕏 X / Twitter</option>
-          <option value="linkedin">in LinkedIn</option>
-          <option value="other">◆ Other</option>
+          <option value="facebook">Facebook</option>
+          <option value="reddit">Reddit</option>
+          <option value="linkedin">LinkedIn</option>
+          <option value="x">X</option>
+          <option value="other">Other</option>
         </select>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginBottom: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10, marginBottom: 10 }}>
         <input
           style={inputStyle}
-          placeholder={form.platform === 'facebook' ? 'Search term (or leave blank)' : 'URL'}
-          value={form.urlOrSearch}
-          onChange={e => set('urlOrSearch', e.target.value)}
+          placeholder="Direct URL"
+          value={form.url}
+          onChange={event => set('url', event.target.value)}
         />
         <input
           style={inputStyle}
-          placeholder="Size (e.g. 20k)"
+          placeholder="Size or note"
           value={form.size}
-          onChange={e => set('size', e.target.value)}
+          onChange={event => set('size', event.target.value)}
         />
       </div>
       <input
-        style={{ ...inputStyle, marginBottom: 8 }}
-        placeholder="Tip / notes (optional)"
+        style={{ ...inputStyle, marginBottom: 10 }}
+        placeholder="Reminder for this community"
         value={form.tip}
-        onChange={e => set('tip', e.target.value)}
+        onChange={event => set('tip', event.target.value)}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+        <label style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', color: COLORS.text }}>
           <input
             type="checkbox"
             checked={form.safe}
-            onChange={e => set('safe', e.target.checked)}
+            onChange={event => set('safe', event.target.checked)}
           />
-          Can mention PracticeSight
+          Rules allow PracticeSight mentions
         </label>
+        {error && <span style={{ color: COLORS.error, fontSize: 13, fontWeight: 700 }}>{error}</span>}
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
+      <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={handleSave}
-          disabled={!form.name.trim()}
           style={{
-            padding: '6px 16px', fontSize: 12, fontWeight: 700,
-            background: form.name.trim() ? COLORS.primary : '#9CA3AF',
-            color: '#fff', border: 'none', borderRadius: 6,
-            cursor: form.name.trim() ? 'pointer' : 'not-allowed', fontFamily: 'inherit'
+            padding: '10px 16px',
+            fontSize: 14,
+            fontWeight: 800,
+            background: COLORS.primary,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
           }}
         >
-          Save
+          Save verified link
         </button>
         <button
           onClick={onCancel}
           style={{
-            padding: '6px 12px', fontSize: 12, background: 'none',
-            border: `1px solid ${COLORS.border}`, borderRadius: 6,
-            cursor: 'pointer', fontFamily: 'inherit', color: COLORS.muted
+            padding: '10px 14px',
+            fontSize: 14,
+            fontWeight: 700,
+            background: '#fff',
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            color: COLORS.muted,
           }}
         >
           Cancel
@@ -512,131 +459,157 @@ export function CommunitiesPanel({ onSelect }) {
     setCustomCommunities(loadCustom());
   }, []);
 
-  const allCommunities = [...COMMUNITIES, ...customCommunities];
+  const allCommunities = useMemo(() => [...COMMUNITIES, ...customCommunities], [customCommunities]);
 
   const filtered = allCommunities.filter(c => {
     if (platformFilter !== 'all' && c.platform !== platformFilter) return false;
     if (safeFilter === 'safe' && !c.safe) return false;
     if (safeFilter === 'strict' && c.safe) return false;
-    if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (search && !`${c.name} ${c.rule} ${c.tip}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const handleAdd = (entry) => {
+  const platformCount = platform => allCommunities.filter(c => c.platform === platform).length;
+  const platforms = [
+    { id: 'all', label: `All ${allCommunities.length}` },
+    { id: 'reddit', label: `Reddit ${platformCount('reddit')}` },
+    { id: 'facebook', label: `Facebook ${platformCount('facebook')}` },
+    { id: 'linkedin', label: `LinkedIn ${platformCount('linkedin')}` },
+    { id: 'x', label: `X ${platformCount('x')}` },
+  ];
+
+  const handleAdd = entry => {
     const updated = [...customCommunities, entry];
     setCustomCommunities(updated);
     saveCustom(updated);
     setShowAddForm(false);
   };
 
-  const handleDelete = (name) => {
+  const handleDelete = name => {
     const updated = customCommunities.filter(c => c.name !== name);
     setCustomCommunities(updated);
     saveCustom(updated);
   };
 
-  const platforms = [
-    { id: 'all', label: `All (${allCommunities.length})` },
-    { id: 'reddit',   label: '◉ Reddit' },
-    { id: 'facebook', label: 'f Facebook' },
-    { id: 'x',        label: '𝕏 X' },
-    { id: 'linkedin', label: 'in LinkedIn' },
-  ];
-
-  const btnStyle = (active) => ({
-    padding: '4px 12px', fontSize: 11, fontWeight: 600,
-    border: active ? '2px solid #111' : `1px solid ${COLORS.border}`,
-    background: active ? '#111' : '#fff',
-    color: active ? '#fff' : '#555',
-    borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit'
+  const btnStyle = active => ({
+    padding: '8px 12px',
+    fontSize: 13,
+    fontWeight: 800,
+    border: active ? `2px solid ${COLORS.primary}` : `1px solid ${COLORS.border}`,
+    background: active ? COLORS.primary : '#fff',
+    color: active ? '#fff' : COLORS.text,
+    borderRadius: 8,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
   });
 
+  const noFacebookBuiltIns = platformFilter === 'facebook' && platformCount('facebook') === 0;
+
   return (
-    <div style={{
-      background: '#fff', border: `1px solid ${COLORS.border}`,
-      borderRadius: 12, marginBottom: 16, overflow: 'hidden'
+    <section style={{
+      background: '#fff',
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 8,
+      marginBottom: 18,
+      overflow: 'hidden',
+      boxShadow: '0 10px 26px rgba(15, 23, 42, 0.06)',
     }}>
-      {/* Header */}
       <button
         onClick={() => setOpen(!open)}
         style={{
-          width: '100%', display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', padding: '12px 16px',
-          background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit'
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '16px 18px',
+          background: '#fff',
+          border: 'none',
+          borderBottom: open ? `1px solid ${COLORS.border}` : 'none',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          textAlign: 'left',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>📍 Communities to Monitor</span>
-          <span style={{ fontSize: 11, color: COLORS.muted }}>
-            {allCommunities.length} total · click to open + fill source · ▼ tips = posting rules
-          </span>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 900, color: COLORS.text }}>Verified community targets</div>
+          <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 3 }}>
+            Built-ins now require a working direct link. Facebook is manual-only until you add exact group URLs.
+          </div>
         </div>
-        <span style={{ fontSize: 11, color: COLORS.muted }}>{open ? '▲ hide' : '▼ show'}</span>
+        <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 800 }}>{open ? 'Hide' : 'Show'}</span>
       </button>
 
       {open && (
         <>
-          {/* Filter bar */}
-          <div style={{
-            borderTop: `1px solid ${COLORS.border}`,
-            borderBottom: `1px solid ${COLORS.border}`,
-            background: COLORS.bg, padding: '8px 16px'
-          }}>
-            {/* Platform tabs */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-              {platforms.map(p => (
-                <button key={p.id} onClick={() => setPlatformFilter(p.id)} style={btnStyle(platformFilter === p.id)}>
-                  {p.label}
+          <div style={{ padding: 16, background: '#F8FAFC', borderBottom: `1px solid ${COLORS.border}` }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              {platforms.map(platform => (
+                <button key={platform.id} onClick={() => setPlatformFilter(platform.id)} style={btnStyle(platformFilter === platform.id)}>
+                  {platform.label}
                 </button>
               ))}
             </div>
-            {/* Safe filter + search */}
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={() => setSafeFilter('all')} style={btnStyle(safeFilter === 'all')}>All rules</button>
-              <button onClick={() => setSafeFilter('safe')} style={{ ...btnStyle(safeFilter === 'safe'), color: safeFilter === 'safe' ? '#fff' : '#166534', borderColor: safeFilter === 'safe' ? '#111' : '#B8E5C8' }}>✓ Can mention</button>
-              <button onClick={() => setSafeFilter('strict')} style={{ ...btnStyle(safeFilter === 'strict'), color: safeFilter === 'strict' ? '#fff' : '#854F0B', borderColor: safeFilter === 'strict' ? '#111' : '#F59E0B' }}>⚠ No promo only</button>
+              <button onClick={() => setSafeFilter('safe')} style={btnStyle(safeFilter === 'safe')}>Can mention</button>
+              <button onClick={() => setSafeFilter('strict')} style={btnStyle(safeFilter === 'strict')}>No promotion</button>
               <input
                 value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search communities..."
+                onChange={event => setSearch(event.target.value)}
+                placeholder="Search target, rule, or note"
                 style={{
-                  flex: 1, minWidth: 120, padding: '4px 9px', fontSize: 11,
-                  border: `1px solid ${COLORS.border}`, borderRadius: 20,
-                  fontFamily: 'inherit', background: '#fff'
+                  flex: 1,
+                  minWidth: 220,
+                  padding: '10px 12px',
+                  fontSize: 14,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
+                  fontFamily: 'inherit',
+                  background: '#fff',
                 }}
               />
               <button
                 onClick={() => { setShowAddForm(true); setOpen(true); }}
                 style={{
-                  padding: '4px 12px', fontSize: 11, fontWeight: 700,
-                  background: '#7C3AED', color: '#fff', border: 'none',
-                  borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit'
+                  padding: '10px 14px',
+                  fontSize: 14,
+                  fontWeight: 900,
+                  background: COLORS.secondary,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
                 }}
               >
-                + Add yours
+                Add verified link
               </button>
             </div>
           </div>
 
-          {/* Count */}
-          <div style={{ padding: '6px 16px', fontSize: 10, color: COLORS.muted, background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
-            Showing {filtered.length} of {allCommunities.length} · ⚠ no promotion = cold peer-support reply · ✓ can mention = warm reply when ready
+          <div style={{
+            padding: '10px 16px',
+            fontSize: 13,
+            fontWeight: 700,
+            color: COLORS.muted,
+            background: '#fff',
+            borderBottom: `1px solid ${COLORS.border}`,
+          }}>
+            Showing {filtered.length} targets. Removed unverified Facebook guesses, private r/psychotherapy, banned r/MFT, and banned r/medicalbilling.
           </div>
 
-          {/* List */}
-          <div>
-            {filtered.length === 0 ? (
-              <div style={{ padding: '20px 16px', fontSize: 12, color: COLORS.muted, textAlign: 'center' }}>
-                No communities match — try clearing the filter
-              </div>
-            ) : (
-              filtered.map(c => (
-                <CommunityRow key={c.name} c={c} onSelect={onSelect} onDelete={c.custom ? handleDelete : null} />
-              ))
-            )}
-          </div>
+          {filtered.length === 0 ? (
+            <div style={{ padding: 24, fontSize: 15, color: COLORS.muted, textAlign: 'center', lineHeight: 1.5 }}>
+              {noFacebookBuiltIns
+                ? 'No verified built-in Facebook groups. Add the exact facebook.com/groups URL after you confirm the group exists and rules allow outreach.'
+                : 'No targets match the current filters.'}
+            </div>
+          ) : (
+            filtered.map(c => (
+              <CommunityRow key={`${c.platform}-${c.name}`} c={c} onSelect={onSelect} onDelete={c.custom ? handleDelete : null} />
+            ))
+          )}
 
-          {/* Add form */}
           {showAddForm && (
             <AddCommunityForm
               onSave={handleAdd}
@@ -645,7 +618,7 @@ export function CommunitiesPanel({ onSelect }) {
           )}
         </>
       )}
-    </div>
+    </section>
   );
 }
 

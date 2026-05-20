@@ -208,8 +208,8 @@ function PhaseSection({ phase, templates, apiKey, preferredModel }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <div style={{
-        fontSize: 11, fontWeight: 700, color: pc.color, background: pc.bg,
-        padding: '6px 14px', borderRadius: 6, marginBottom: 10,
+        fontSize: 13, fontWeight: 900, color: pc.color, background: pc.bg,
+        padding: '8px 14px', borderRadius: 8, marginBottom: 12,
         textTransform: 'uppercase', letterSpacing: '.5px'
       }}>
         {pc.label}
@@ -262,44 +262,45 @@ function TemplateCard({ template, apiKey, preferredModel }) {
 
   return (
     <div style={{
-      border: `1px solid ${COLORS.border}`, borderRadius: 10,
-      overflow: 'hidden', marginBottom: 8
+      border: `1px solid ${COLORS.border}`, borderRadius: 8,
+      overflow: 'hidden', marginBottom: 12,
+      boxShadow: '0 8px 20px rgba(15, 23, 42, 0.04)'
     }}>
       {/* Header */}
-      <div style={{ padding: '10px 14px', background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
+      <div style={{ padding: '13px 14px', background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>{template.title}</span>
+          <span style={{ fontSize: 16, fontWeight: 900 }}>{template.title}</span>
           <span style={{
-            fontSize: 10, padding: '2px 7px', borderRadius: 10,
-            background: '#fff', color: '#555', border: `1px solid ${COLORS.border}`
+            fontSize: 12, padding: '4px 7px', borderRadius: 6,
+            background: '#fff', color: COLORS.muted, border: `1px solid ${COLORS.border}`, fontWeight: 800
           }}>
             {template.tag}
           </span>
         </div>
-        <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 2 }}>
+        <div style={{ fontSize: 13, color: COLORS.muted, marginBottom: 3, lineHeight: 1.4 }}>
           <strong>When:</strong> {template.when}
         </div>
-        <div style={{ fontSize: 11, color: COLORS.muted }}>
+        <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.4 }}>
           <strong>Post in:</strong> {template.communities}
         </div>
       </div>
 
       {/* Body */}
-      <div style={{ padding: '10px 14px' }}>
+      <div style={{ padding: '13px 14px' }}>
         {/* Original — click to copy */}
         <div
           onClick={() => copy(template.body, 'orig-' + template.id)}
           title="Click to copy"
           style={{
-            background: '#fff', padding: '10px 12px', borderRadius: 8,
-            fontSize: 12, color: '#333', lineHeight: 1.7, marginBottom: 8,
+            background: '#fff', padding: '12px 13px', borderRadius: 8,
+            fontSize: 14, color: COLORS.text, lineHeight: 1.65, marginBottom: 10,
             cursor: 'copy', whiteSpace: 'pre-wrap', border: `1px solid ${COLORS.border}`
           }}
         >
           {template.body}
         </div>
         {copied === 'orig-' + template.id && (
-          <div style={{ fontSize: 10, color: '#166534', marginBottom: 4 }}>✓ Copied</div>
+          <div style={{ fontSize: 13, color: COLORS.success, marginBottom: 6, fontWeight: 800 }}>Copied</div>
         )}
 
         {/* Remix controls */}
@@ -309,8 +310,8 @@ function TemplateCard({ template, apiKey, preferredModel }) {
             onChange={e => setCommunity(e.target.value)}
             placeholder="Community (e.g. r/therapists)"
             style={{
-              flex: 1, minWidth: 140, padding: '5px 10px', fontSize: 11,
-              border: `1px solid ${COLORS.border}`, borderRadius: 6,
+              flex: 1, minWidth: 180, padding: '9px 11px', fontSize: 14,
+              border: `1px solid ${COLORS.border}`, borderRadius: 8,
               fontFamily: 'inherit', background: '#fff'
             }}
           />
@@ -318,9 +319,9 @@ function TemplateCard({ template, apiKey, preferredModel }) {
             onClick={handleRemix}
             disabled={generating}
             style={{
-              padding: '6px 14px', fontSize: 11, fontWeight: 700,
+              padding: '10px 14px', fontSize: 14, fontWeight: 900,
               background: generating ? '#9CA3AF' : COLORS.primary,
-              color: '#fff', border: 'none', borderRadius: 6,
+              color: '#fff', border: 'none', borderRadius: 8,
               cursor: generating ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
             }}
           >
@@ -330,8 +331,8 @@ function TemplateCard({ template, apiKey, preferredModel }) {
             <button
               onClick={() => setExpanded(!expanded)}
               style={{
-                padding: '6px 10px', fontSize: 11, background: 'none',
-                border: `1px solid ${COLORS.border}`, borderRadius: 6,
+                padding: '10px 12px', fontSize: 14, background: 'none',
+                border: `1px solid ${COLORS.border}`, borderRadius: 8,
                 cursor: 'pointer', color: COLORS.muted, fontFamily: 'inherit'
               }}
             >
@@ -340,27 +341,27 @@ function TemplateCard({ template, apiKey, preferredModel }) {
           )}
         </div>
 
-        {error && <div style={{ fontSize: 11, color: '#C44', marginTop: 6 }}>{error}</div>}
+        {error && <div style={{ fontSize: 13, color: COLORS.error, marginTop: 8, fontWeight: 800 }}>{error}</div>}
 
         {/* Remixes */}
         {expanded && remixes.map((r, i) => (
           <div key={i} style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.muted, marginBottom: 3 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: COLORS.muted, marginBottom: 4 }}>
               Remix {i + 1}
             </div>
             <div
               onClick={() => copy(r, `remix-${template.id}-${i}`)}
               title="Click to copy"
               style={{
-                background: '#F0FDF4', border: '1px solid #B8E5C8', borderRadius: 6,
-                padding: '8px 10px', fontSize: 11, color: '#166534',
+                background: '#F0FDF4', border: '1px solid #B8E5C8', borderRadius: 8,
+                padding: '10px 12px', fontSize: 14, color: '#166534',
                 lineHeight: 1.7, cursor: 'copy', whiteSpace: 'pre-wrap'
               }}
             >
               {r}
             </div>
             {copied === `remix-${template.id}-${i}` && (
-              <div style={{ fontSize: 10, color: '#166534', marginTop: 2 }}>✓ Copied</div>
+              <div style={{ fontSize: 13, color: '#166534', marginTop: 4, fontWeight: 800 }}>Copied</div>
             )}
           </div>
         ))}
@@ -375,23 +376,24 @@ export function PostTemplatesPanel({ apiKey, preferredModel }) {
   return (
     <div style={{
       background: '#fff', border: `1px solid ${COLORS.border}`,
-      borderRadius: 12, marginBottom: 16, overflow: 'hidden'
+      borderRadius: 8, marginBottom: 16, overflow: 'hidden',
+      boxShadow: '0 10px 26px rgba(15, 23, 42, 0.06)'
     }}>
       <button
         onClick={() => setOpen(!open)}
         style={{
           width: '100%', display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', padding: '12px 16px',
+          alignItems: 'center', padding: '16px 18px',
           background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit'
         }}
       >
         <div>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>✏️ Post Templates + Remix</span>
-          <span style={{ fontSize: 11, color: COLORS.muted, marginLeft: 8 }}>
+          <span style={{ fontSize: 17, fontWeight: 900 }}>Post templates + remix</span>
+          <span style={{ fontSize: 13, color: COLORS.muted, marginLeft: 10, fontWeight: 700 }}>
             Phase 1 → Phase 2 → Reply scripts · click to copy · remix for each community
           </span>
         </div>
-        <span style={{ fontSize: 11, color: COLORS.muted }}>{open ? '▲' : '▼'}</span>
+        <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 800 }}>{open ? 'Hide' : 'Show'}</span>
       </button>
 
       {open && (

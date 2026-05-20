@@ -1,38 +1,38 @@
 // Pipeline stages
-export const APP_BUILD_LABEL = 'OpenRouter fallback v3';
+export const APP_BUILD_LABEL = 'Verified communities v1';
 
 export const STAGES = [
-  { id: 'saw_it', label: 'Saw it', color: '#3B82F6', desc: 'No pain yet' },
-  { id: 'engaged', label: 'Talking', color: '#F59E0B', desc: 'Asking questions' },
-  { id: 'warm', label: 'Warm', color: '#EF4444', desc: 'Billing pain' },
-  { id: 'hot', label: 'Hot 🔥', color: '#DC2626', desc: 'Wants to try' },
-  { id: 'testing', label: 'Testing', color: '#10B981', desc: 'Using it' },
-  { id: 'feedback', label: '✓ Feedback', color: '#8B5CF6', desc: 'Gave feedback' },
-  { id: 'not_fit', label: 'Not a fit', color: '#9CA3AF', desc: 'Headway/Alma' }
+  { id: 'saw_it', label: 'Saw it', color: '#2563EB', desc: 'No pain yet' },
+  { id: 'engaged', label: 'Talking', color: '#D97706', desc: 'Asking questions' },
+  { id: 'warm', label: 'Warm', color: '#DC2626', desc: 'Billing pain' },
+  { id: 'hot', label: 'Hot', color: '#B91C1C', desc: 'Wants to try' },
+  { id: 'testing', label: 'Testing', color: '#059669', desc: 'Using it' },
+  { id: 'feedback', label: 'Feedback', color: '#7C3AED', desc: 'Gave feedback' },
+  { id: 'not_fit', label: 'Not a fit', color: '#64748B', desc: 'Headway/Alma' }
 ];
 
 // Communication channels
 export const CHANNELS = {
-  reddit: { icon: '◉', label: 'Reddit', color: '#E05929' },
-  facebook: { icon: 'f', label: 'Facebook', color: '#1877F2' },
+  reddit: { icon: '◉', label: 'Reddit', color: '#D9480F' },
+  facebook: { icon: 'f', label: 'Facebook', color: '#1864AB' },
   linkedin: { icon: 'in', label: 'LinkedIn', color: '#0A66C2' },
   x: { icon: '𝕏', label: 'X / Twitter', color: '#000000' },
-  whatsapp: { icon: 'W', label: 'WhatsApp', color: '#25D366' },
+  whatsapp: { icon: 'W', label: 'WhatsApp', color: '#0E9F6E' },
   dm: { icon: '→', label: 'Direct Message', color: '#7C3AED' }
 };
 
 // Design system colors
 export const COLORS = {
-  primary: '#111',
-  secondary: '#3B82F6',
-  accent: '#E05929',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  bg: '#F9F8F6',
-  border: '#E5E3DE',
-  muted: '#AAA',
-  text: '#111'
+  primary: '#111827',
+  secondary: '#2563EB',
+  accent: '#D9480F',
+  success: '#059669',
+  warning: '#D97706',
+  error: '#DC2626',
+  bg: '#F4F7FB',
+  border: '#CBD5E1',
+  muted: '#64748B',
+  text: '#111827'
 };
 
 // Spam keywords blocklist (local check, no API)

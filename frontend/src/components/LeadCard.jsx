@@ -168,23 +168,24 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     <div style={{
       background: '#fff',
       border: `1px solid ${COLORS.border}`,
-      borderLeft: `3px solid ${stage?.color || COLORS.muted}`,
-      borderRadius: 11,
+      borderLeft: `4px solid ${stage?.color || COLORS.muted}`,
+      borderRadius: 8,
       overflow: 'hidden',
-      marginBottom: 8
+      marginBottom: 12,
+      boxShadow: '0 8px 20px rgba(15, 23, 42, 0.05)'
     }}>
       {/* Header */}
       <div style={{
         background: stage?.color || COLORS.muted,
         color: '#fff',
-        padding: '10px 12px',
+        padding: '12px 14px',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start'
       }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{lead.name}</div>
-          <div style={{ fontSize: 11, opacity: 0.9, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ fontSize: 16, fontWeight: 900, marginBottom: 4 }}>{lead.name}</div>
+          <div style={{ fontSize: 13, opacity: 0.94, display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center', fontWeight: 700 }}>
             <span>{channel?.icon} {channel?.label || lead.ch}</span>
             {lead.source && (
               <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px' }}>
@@ -209,7 +210,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
               style={{
                 fontSize: 11, color: 'rgba(255,255,255,0.85)',
                 textDecoration: 'none', background: 'rgba(255,255,255,0.15)',
-                padding: '2px 8px', borderRadius: 4, fontWeight: 600
+                padding: '5px 9px', borderRadius: 6, fontWeight: 800
               }}
             >
               Thread ↗
@@ -217,25 +218,25 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
           )}
           <button onClick={handleDelete} style={{
             background: 'rgba(255,255,255,0.2)', border: 'none', color: '#fff',
-            borderRadius: 4, padding: '2px 8px', cursor: 'pointer', fontSize: 14
+            borderRadius: 6, padding: '4px 9px', cursor: 'pointer', fontSize: 16
           }}>×</button>
         </div>
       </div>
 
       {/* Body */}
-      <div style={{ padding: 12 }}>
+      <div style={{ padding: 14 }}>
         {/* Their comment */}
         <div style={{
-          background: COLORS.bg, padding: 10, borderRadius: 8, marginBottom: 10,
-          fontSize: 12, color: '#555', lineHeight: 1.5, fontStyle: 'italic'
+          background: COLORS.bg, padding: 12, borderRadius: 8, marginBottom: 12,
+          fontSize: 14, color: COLORS.text, lineHeight: 1.55, fontStyle: 'italic'
         }}>
           "{lead.comment.slice(0, 150)}{lead.comment.length > 150 ? '...' : ''}"
         </div>
 
         {/* Stage selector */}
         <select value={lead.stage} onChange={handleStageChange} style={{
-          width: '100%', padding: '7px 10px', border: `1px solid ${COLORS.border}`,
-          borderRadius: 8, fontSize: 12, fontFamily: 'inherit', marginBottom: 10,
+          width: '100%', padding: '10px 12px', border: `1px solid ${COLORS.border}`,
+          borderRadius: 8, fontSize: 14, fontFamily: 'inherit', marginBottom: 12,
           boxSizing: 'border-box', background: '#fff',
           color: stage?.color || COLORS.text, fontWeight: 600
         }}>
@@ -245,7 +246,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         {/* Community mode indicator */}
         {(lead.source || lead.ch === 'reddit') && (
           <div style={{
-            fontSize: 10, marginBottom: 6, padding: '4px 8px', borderRadius: 6,
+            fontSize: 13, marginBottom: 10, padding: '8px 10px', borderRadius: 8,
             background: strict ? '#FFF5EB' : '#F0FDF4',
             color: strict ? '#854F0B' : '#166534',
             display: 'flex', alignItems: 'center', gap: 4
@@ -258,11 +259,11 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
 
         {/* Generate button */}
         <button onClick={handleGenerate} disabled={generating} style={{
-          width: '100%', padding: 10, marginBottom: 8,
+          width: '100%', padding: 13, marginBottom: 10,
           background: generating ? '#9CA3AF' : COLORS.primary,
           color: '#fff', border: 'none', borderRadius: 8,
           cursor: generating ? 'not-allowed' : 'pointer',
-          fontSize: 13, fontWeight: 700, fontFamily: 'inherit'
+          fontSize: 15, fontWeight: 900, fontFamily: 'inherit'
         }}>
           {generating ? '⏳ Generating...' : generatedReply ? '↺ Re-generate' : '✨ Generate Reply'}
         </button>
@@ -276,7 +277,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
               title="Click to copy"
               style={{
                 background: '#F0FDF4', border: '1px solid #B8E5C8',
-                borderRadius: 8, padding: 10, fontSize: 12,
+                borderRadius: 8, padding: 12, fontSize: 14,
                 lineHeight: 1.6, color: '#166534', marginBottom: 8,
                 cursor: 'copy', userSelect: 'all'
               }}
@@ -289,16 +290,16 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
               <button
                 onClick={handlePost}
                 style={{
-                  width: '100%', padding: '10px 12px', marginBottom: 6,
+                  width: '100%', padding: '12px 12px', marginBottom: 8,
                   background: postAction.color,
                   color: '#fff', border: 'none', borderRadius: 8,
-                  cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  cursor: 'pointer', fontSize: 15, fontWeight: 900,
                   fontFamily: 'inherit',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
                 }}
               >
                 <span>{postAction.label}</span>
-                <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.8 }}>{postAction.sublabel}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.86 }}>{postAction.sublabel}</span>
               </button>
             )}
 
@@ -307,17 +308,17 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
               <button
                 onClick={handleMarkPosted}
                 style={{
-                  width: '100%', padding: 8,
+                  width: '100%', padding: 10,
                   background: posted ? COLORS.success + '22' : '#fff',
                   color: COLORS.success,
                   border: `1px solid ${COLORS.success}`, borderRadius: 6,
-                  cursor: 'pointer', fontSize: 12, fontWeight: 600
+                  cursor: 'pointer', fontSize: 14, fontWeight: 800
                 }}
               >
                 {posted ? '✓ Mark as Posted (confirm)' : '✓ Mark as Posted'}
               </button>
             ) : (
-              <div style={{ textAlign: 'center', fontSize: 12, color: COLORS.success, fontWeight: 600, padding: 4 }}>
+              <div style={{ textAlign: 'center', fontSize: 14, color: COLORS.success, fontWeight: 800, padding: 6 }}>
                 ✓ Posted
               </div>
             )}
@@ -326,10 +327,10 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
 
         {/* Log follow-up */}
         <button onClick={() => setShowFollowUp(!showFollowUp)} style={{
-          width: '100%', padding: '6px 10px', marginTop: 4,
+          width: '100%', padding: '9px 10px', marginTop: 6,
           background: 'transparent', color: COLORS.muted,
           border: `1px solid ${COLORS.border}`, borderRadius: 6,
-          cursor: 'pointer', fontSize: 11
+          cursor: 'pointer', fontSize: 14, fontWeight: 800
         }}>
           {showFollowUp ? '▲ Hide' : `+ Log follow-up${lead.followUps?.length ? ` (${lead.followUps.length})` : ''}`}
         </button>
@@ -342,15 +343,15 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
               placeholder="Paste their reply or next comment..."
               rows={2}
               style={{
-                width: '100%', padding: 8, border: `1px solid ${COLORS.border}`,
-                borderRadius: 6, fontSize: 11, fontFamily: 'inherit',
+                width: '100%', padding: 10, border: `1px solid ${COLORS.border}`,
+                borderRadius: 8, fontSize: 14, fontFamily: 'inherit',
                 marginBottom: 6, boxSizing: 'border-box', resize: 'vertical'
               }}
             />
             <button onClick={handleFollowUp} style={{
-              width: '100%', padding: 6, background: COLORS.secondary,
+              width: '100%', padding: 10, background: COLORS.secondary,
               color: '#fff', border: 'none', borderRadius: 6,
-              cursor: 'pointer', fontSize: 11, fontWeight: 600
+              cursor: 'pointer', fontSize: 14, fontWeight: 800
             }}>
               Save follow-up
             </button>
@@ -363,7 +364,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
             {lead.followUps.map((fu, i) => (
               <div key={i} style={{
                 background: COLORS.bg, padding: '5px 8px', borderRadius: 4,
-                marginBottom: 2, fontSize: 11, color: '#555', fontStyle: 'italic',
+                marginBottom: 4, fontSize: 13, color: COLORS.text, fontStyle: 'italic',
                 borderLeft: `2px solid ${COLORS.secondary}`
               }}>
                 "{fu.slice(0, 90)}{fu.length > 90 ? '...' : ''}"

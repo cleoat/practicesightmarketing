@@ -66,7 +66,7 @@ export function SettingsPanel({ settings, onUpdate }) {
         position: 'fixed', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
         background: '#fff', borderRadius: 16, padding: 24,
-        width: '90%', maxWidth: 460, zIndex: 1000,
+        width: '90%', maxWidth: 520, zIndex: 1000,
         boxShadow: '0 20px 60px rgba(0,0,0,0.2)'
       }}>
         {/* Header */}
@@ -74,7 +74,7 @@ export function SettingsPanel({ settings, onUpdate }) {
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'center', marginBottom: 20
         }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>Settings</div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.text }}>Settings</div>
           <button onClick={() => setIsOpen(false)} style={{
             border: 'none', background: 'none', color: COLORS.muted,
             cursor: 'pointer', fontSize: 20, lineHeight: 1
@@ -84,8 +84,8 @@ export function SettingsPanel({ settings, onUpdate }) {
         {/* OpenRouter API Key */}
         <div style={{ marginBottom: 16 }}>
           <label style={{
-            fontSize: 11, color: '#888', display: 'block',
-            marginBottom: 4, fontWeight: 600, textTransform: 'uppercase'
+            fontSize: 13, color: COLORS.muted, display: 'block',
+            marginBottom: 6, fontWeight: 800, textTransform: 'uppercase'
           }}>
             OpenRouter API Key
           </label>
@@ -98,17 +98,17 @@ export function SettingsPanel({ settings, onUpdate }) {
             style={{
               width: '100%', padding: '8px 10px',
               border: '1px solid #ddd', borderRadius: 6,
-              fontSize: 12, boxSizing: 'border-box', fontFamily: 'monospace'
+              fontSize: 14, boxSizing: 'border-box', fontFamily: 'monospace'
             }}
           />
-          <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 5 }}>
             Use an OpenRouter key, not an OpenAI key. Stored locally in this browser.
           </div>
           <button
             onClick={handleTestKey}
             disabled={testing}
             style={{
-              marginTop: 8, padding: '7px 12px', fontSize: 11, fontWeight: 700,
+              marginTop: 10, padding: '9px 13px', fontSize: 14, fontWeight: 800,
               background: testing ? '#9CA3AF' : '#fff',
               color: testing ? '#fff' : COLORS.secondary,
               border: `1px solid ${testing ? '#9CA3AF' : COLORS.secondary}`,
@@ -120,7 +120,7 @@ export function SettingsPanel({ settings, onUpdate }) {
           </button>
           {keyStatus && (
             <div style={{
-              fontSize: 10, marginTop: 6, padding: '6px 8px', borderRadius: 6,
+              fontSize: 13, marginTop: 8, padding: '8px 10px', borderRadius: 8,
               background: keyStatusType === 'success' ? '#E5F5EB' : '#FFE5E5',
               color: keyStatusType === 'success' ? '#166534' : '#C44',
               lineHeight: 1.4
@@ -133,8 +133,8 @@ export function SettingsPanel({ settings, onUpdate }) {
         {/* OpenRouter model override */}
         <div style={{ marginBottom: 16 }}>
           <label style={{
-            fontSize: 11, color: '#888', display: 'block',
-            marginBottom: 4, fontWeight: 600, textTransform: 'uppercase'
+            fontSize: 13, color: COLORS.muted, display: 'block',
+            marginBottom: 6, fontWeight: 800, textTransform: 'uppercase'
           }}>
             OpenRouter model override
           </label>
@@ -146,10 +146,10 @@ export function SettingsPanel({ settings, onUpdate }) {
             style={{
               width: '100%', padding: '8px 10px',
               border: '1px solid #ddd', borderRadius: 6,
-              fontSize: 12, boxSizing: 'border-box', fontFamily: 'monospace'
+              fontSize: 14, boxSizing: 'border-box', fontFamily: 'monospace'
             }}
           />
-          <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 5 }}>
             Optional. Leave blank to try all fallback models, starting with {DEFAULT_OPENROUTER_MODELS[0]}.
           </div>
         </div>
@@ -157,8 +157,8 @@ export function SettingsPanel({ settings, onUpdate }) {
         {/* Max replies per day */}
         <div style={{ marginBottom: 20 }}>
           <label style={{
-            fontSize: 11, color: '#888', display: 'block',
-            marginBottom: 4, fontWeight: 600, textTransform: 'uppercase'
+            fontSize: 13, color: COLORS.muted, display: 'block',
+            marginBottom: 6, fontWeight: 800, textTransform: 'uppercase'
           }}>
             Max replies/day (personal reminder)
           </label>
@@ -171,7 +171,7 @@ export function SettingsPanel({ settings, onUpdate }) {
             style={{
               width: '100%', padding: '8px 10px',
               border: '1px solid #ddd', borderRadius: 6,
-              fontSize: 12, boxSizing: 'border-box'
+              fontSize: 14, boxSizing: 'border-box'
             }}
           />
         </div>

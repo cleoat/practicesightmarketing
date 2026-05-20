@@ -8,7 +8,7 @@ export function PipelineView({ leads, onUpdate, onDelete, onReply, onMarkPosted,
   return (
     <div style={{
       display: filter === 'all' ? 'grid' : 'block',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+      gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
       gap: 16,
       marginBottom: 20
     }}>
@@ -22,19 +22,23 @@ export function PipelineView({ leads, onUpdate, onDelete, onReply, onMarkPosted,
             {/* Stage header */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              marginBottom: 12, paddingBottom: 8,
-              borderBottom: `2px solid ${stage.color}`
+              marginBottom: 12,
+              padding: '10px 12px',
+              border: `1px solid ${stage.color}35`,
+              borderLeft: `4px solid ${stage.color}`,
+              borderRadius: 8,
+              background: '#fff'
             }}>
               <div style={{
                 width: 10, height: 10, borderRadius: '50%',
                 background: stage.color, flexShrink: 0
               }} />
-              <span style={{ fontSize: 12, fontWeight: 700, color: stage.color }}>
+              <span style={{ fontSize: 15, fontWeight: 900, color: stage.color }}>
                 {stage.label}
               </span>
               <span style={{
-                fontSize: 11, color: COLORS.muted,
-                fontFamily: 'monospace', marginLeft: 'auto'
+                fontSize: 13, color: COLORS.muted,
+                fontWeight: 900, marginLeft: 'auto'
               }}>
                 {stageLeads.length}
               </span>
@@ -44,9 +48,9 @@ export function PipelineView({ leads, onUpdate, onDelete, onReply, onMarkPosted,
             <div>
               {stageLeads.length === 0 ? (
                 <div style={{
-                  fontSize: 12, color: COLORS.muted,
+                  fontSize: 14, color: COLORS.muted,
                   textAlign: 'center', padding: '20px 10px', fontStyle: 'italic'
-                }}>—</div>
+                }}>No leads</div>
               ) : (
                 stageLeads.map(lead => (
                   <LeadCard
@@ -69,13 +73,11 @@ export function PipelineView({ leads, onUpdate, onDelete, onReply, onMarkPosted,
       {/* Empty state */}
       {filteredLeads.length === 0 && filter === 'all' && (
         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '60px 20px' }}>
-          <div style={{ fontSize: 40, marginBottom: 16 }}>📋</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#333', marginBottom: 8 }}>
+          <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text, marginBottom: 8 }}>
             No leads yet
           </div>
-          <div style={{ fontSize: 13, color: '#999', lineHeight: 1.7, maxWidth: 380, margin: '0 auto' }}>
-            Find someone on Reddit or Facebook talking about billing or insurance issues.
-            Paste their name and comment above, then click <strong>✨ Generate Reply</strong> to get an AI reply you can copy and post.
+          <div style={{ fontSize: 15, color: COLORS.muted, lineHeight: 1.6, maxWidth: 420, margin: '0 auto' }}>
+            Add the first billing conversation to start the pipeline.
           </div>
         </div>
       )}
