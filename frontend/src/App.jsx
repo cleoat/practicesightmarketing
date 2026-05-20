@@ -5,6 +5,7 @@ import PipelineView from './components/PipelineView';
 import SettingsPanel from './components/SettingsPanel';
 import CommunitiesPanel, { COMMUNITIES } from './components/CommunitiesPanel';
 import { PostTemplatesPanel } from './components/PostTemplatesPanel';
+import { analyzeLeadComment } from './lib/leadAnalysis';
 import { inferChannelFromText } from './lib/communityRules';
 import {
   getLeads, setLeads,
@@ -37,16 +38,7 @@ function App() {
   useEffect(() => { if (loaded) setLeads(leads); }, [leads, loaded]);
   useEffect(() => { if (loaded) setSettings(settings); }, [settings, loaded]);
 
-  function detectStage(comment) {
-    const lower = comment.toLowerCase();
-    if (lower.includes('unbilled') || lower.includes('stuck') || lower.includes('aging') || lower.includes('billing')) return 'warm';
-    if (/want to try|how do i|how much|sign up|get started|interested in/.test(lower)) return 'hot';
-    if (lower.includes('been using') || lower.includes('tried it') || lower.includes('tested')) return 'testing';
-    if (lower.includes('it worked') || lower.includes('solved') || lower.includes('feedback')) return 'feedback';
-    if (lower.includes('headway') || lower.includes('alma')) return 'not_fit';
-    if (lower.includes('?')) return 'engaged';
-    return 'saw_it';
-  }
+  const inputAnalysis = analyzeLeadComment(inputComment);
 
   function handleCommunitySelect(name, channel) {
     setInputSource(name);
@@ -89,12 +81,16 @@ function App() {
       return;
     }
 
-    const stage = detectStage(comment);
+    const analysis = analyzeLeadComment(comment);
     const newLead = {
       ...DEFAULT_LEAD,
       name,
       comment,
-      stage,
+      stage: analysis.stage,
+      leadType: analysis.leadType,
+      responseType: analysis.responseType,
+      intent: analysis.intent,
+      analysisReason: analysis.reason,
       ch: inputChannel,
       source: inputSource.trim(),
       threadUrl: inputThreadUrl.trim(),
@@ -272,6 +268,37 @@ function App() {
             rows={4}
             style={{ ...inputStyle, marginBottom: 10, resize: 'vertical' }}
           />
+
+          {inputComment.trim().length > 4 && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(160px, 0.7fr) minmax(220px, 1.3fr)',
+              gap: 10,
+              alignItems: 'center',
+              padding: 12,
+              marginBottom: 10,
+              borderRadius: 8,
+              border: `1px solid ${inputAnalysis.stage === 'not_fit' ? '#FECACA' : COLORS.border}`,
+              background: inputAnalysis.stage === 'not_fit' ? '#FEF2F2' : '#F8FAFC',
+            }}>
+              <div>
+                <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 800, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Analyzer
+                </div>
+                <div style={{
+                  fontSize: 15,
+                  fontWeight: 900,
+                  color: inputAnalysis.stage === 'not_fit' ? COLORS.error : COLORS.text,
+                }}>
+                  {inputAnalysis.responseType}
+                </div>
+              </div>
+              <div style={{ fontSize: 14, lineHeight: 1.45, color: COLORS.text }}>
+                <strong>Stage:</strong> {STAGES.find(s => s.id === inputAnalysis.stage)?.label || inputAnalysis.stage}
+                <span style={{ color: COLORS.muted }}> · {inputAnalysis.reason}</span>
+              </div>
+            </div>
+          )}
 
           <button onClick={handleAddLead} style={{
             width: '100%', fontSize: 16, fontWeight: 900, padding: 14,

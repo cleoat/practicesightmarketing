@@ -1,5 +1,5 @@
 // Pipeline stages
-export const APP_BUILD_LABEL = 'Verified communities v1';
+export const APP_BUILD_LABEL = 'Lead analyzer v1';
 
 export const STAGES = [
   { id: 'saw_it', label: 'Saw it', color: '#2563EB', desc: 'No pain yet' },
@@ -58,6 +58,10 @@ export const DEFAULT_LEAD = {
   threadUrl: '',
   comment: '',
   stage: 'saw_it',
+  leadType: 'unknown',
+  responseType: '',
+  intent: '',
+  analysisReason: '',
   reply: '',
   followUps: [],
   date: new Date().toLocaleDateString(),

@@ -257,6 +257,24 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
           </div>
         )}
 
+        {(lead.responseType || lead.analysisReason) && (
+          <div style={{
+            fontSize: 13,
+            marginBottom: 10,
+            padding: '9px 10px',
+            borderRadius: 8,
+            border: `1px solid ${lead.stage === 'not_fit' ? '#FECACA' : COLORS.border}`,
+            background: lead.stage === 'not_fit' ? '#FEF2F2' : '#F8FAFC',
+            color: COLORS.text,
+            lineHeight: 1.45,
+          }}>
+            <div style={{ fontWeight: 900, color: lead.stage === 'not_fit' ? COLORS.error : COLORS.secondary, marginBottom: 3 }}>
+              {lead.responseType || 'Lead analysis'}
+            </div>
+            <div>{lead.analysisReason || lead.intent}</div>
+          </div>
+        )}
+
         {/* Generate button */}
         <button onClick={handleGenerate} disabled={generating} style={{
           width: '100%', padding: 13, marginBottom: 10,

@@ -8,13 +8,15 @@ export function MetricsBar({ leads, redditStats }) {
   const readyToPost = getActionStats(leads).readyToPost;
   const posted = leads.filter(l => l.posted).length;
   const feedback = leads.filter(l => l.stage === 'feedback').length;
+  const notFit = leads.filter(l => l.stage === 'not_fit').length;
 
   const metrics = [
     { label: 'Leads', value: totalLeads, color: COLORS.primary, note: 'tracked' },
     { label: 'Pain', value: activePain, color: COLORS.error, note: 'warm/hot' },
     { label: 'Ready', value: readyToPost, color: COLORS.accent, note: 'reply drafted' },
     { label: 'Posted', value: posted, color: COLORS.success, note: `${redditStats?.postsToday || 0} today` },
-    { label: 'Feedback', value: feedback, color: '#7C3AED', note: 'won learning' }
+    { label: 'Feedback', value: feedback, color: '#7C3AED', note: 'won learning' },
+    { label: 'Not fit', value: notFit, color: COLORS.muted, note: 'filtered out' }
   ];
 
   return (

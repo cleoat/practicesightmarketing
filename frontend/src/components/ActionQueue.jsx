@@ -2,6 +2,10 @@ import React from 'react';
 import { COLORS } from '../lib/constants';
 
 function leadAction(lead) {
+  if (lead.stage === 'not_fit') {
+    return null;
+  }
+
   if (!lead.reply) {
     return { label: 'Draft reply', color: COLORS.secondary, detail: 'Generate a first response' };
   }
