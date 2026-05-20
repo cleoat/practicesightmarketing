@@ -2,7 +2,7 @@ import React from 'react';
 import { STAGES, COLORS } from '../lib/constants';
 import LeadCard from './LeadCard';
 
-export function PipelineView({ leads, onUpdate, onDelete, onReply, onMarkPosted, filter = 'all', apiKey }) {
+export function PipelineView({ leads, onUpdate, onDelete, onReply, onMarkPosted, filter = 'all', apiKey, preferredModel }) {
   const filteredLeads = filter === 'all' ? leads : leads.filter(l => l.stage === filter);
 
   return (
@@ -57,6 +57,7 @@ export function PipelineView({ leads, onUpdate, onDelete, onReply, onMarkPosted,
                     onReply={onReply}
                     onMarkPosted={onMarkPosted}
                     apiKey={apiKey}
+                    preferredModel={preferredModel}
                   />
                 ))
               )}

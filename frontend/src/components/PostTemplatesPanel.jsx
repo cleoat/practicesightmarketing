@@ -158,7 +158,7 @@ const PHASE_COLORS = {
   0: { bg: '#F5F4F0', color: '#555', label: 'Reply scripts' },
 };
 
-async function callRemix(body, community, apiKey) {
+async function callRemix(body, community, apiKey, preferredModel) {
   const isPhase2 = body.includes('practicesight.pages.dev');
   const communityRule = getCommunityRule(community, null, COMMUNITIES);
   const target = formatCommunityForPrompt(communityRule);
@@ -195,6 +195,7 @@ REMIX 3:
   const result = await chatCompletion({
     apiKey,
     maxTokens: 700,
+    preferredModel,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -202,7 +203,7 @@ REMIX 3:
   return matches.map(m => m[1].trim()).filter(Boolean);
 }
 
-function PhaseSection({ phase, templates, apiKey }) {
+function PhaseSection({ phase, templates, apiKey, preferredModel }) {
   const pc = PHASE_COLORS[phase];
   return (
     <div style={{ marginBottom: 20 }}>
@@ -213,12 +214,12 @@ function PhaseSection({ phase, templates, apiKey }) {
       }}>
         {pc.label}
       </div>
-      {templates.map(t => <TemplateCard key={t.id} template={t} apiKey={apiKey} />)}
+      {templates.map(t => <TemplateCard key={t.id} template={t} apiKey={apiKey} preferredModel={preferredModel} />)}
     </div>
   );
 }
 
-function TemplateCard({ template, apiKey }) {
+function TemplateCard({ template, apiKey, preferredModel }) {
   const [remixes, setRemixes] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
@@ -247,7 +248,8 @@ function TemplateCard({ template, apiKey }) {
       const results = await callRemix(
         template.body,
         targetCommunity,
-        apiKey
+        apiKey,
+        preferredModel
       );
       if (!results.length) throw new Error('No remixes generated — try again');
       setRemixes(results);
@@ -367,7 +369,7 @@ function TemplateCard({ template, apiKey }) {
   );
 }
 
-export function PostTemplatesPanel({ apiKey }) {
+export function PostTemplatesPanel({ apiKey, preferredModel }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -394,9 +396,9 @@ export function PostTemplatesPanel({ apiKey }) {
 
       {open && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: '14px 16px' }}>
-          <PhaseSection phase={1} templates={TEMPLATES.filter(t => t.phase === 1)} apiKey={apiKey} />
-          <PhaseSection phase={2} templates={TEMPLATES.filter(t => t.phase === 2)} apiKey={apiKey} />
-          <PhaseSection phase={0} templates={TEMPLATES.filter(t => t.phase === 0)} apiKey={apiKey} />
+          <PhaseSection phase={1} templates={TEMPLATES.filter(t => t.phase === 1)} apiKey={apiKey} preferredModel={preferredModel} />
+          <PhaseSection phase={2} templates={TEMPLATES.filter(t => t.phase === 2)} apiKey={apiKey} preferredModel={preferredModel} />
+          <PhaseSection phase={0} templates={TEMPLATES.filter(t => t.phase === 0)} apiKey={apiKey} preferredModel={preferredModel} />
         </div>
       )}
     </div>

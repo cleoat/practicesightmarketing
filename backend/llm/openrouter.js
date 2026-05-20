@@ -4,12 +4,13 @@
 const OPENROUTER_API_KEY = normalizeOpenRouterKey(process.env.OPENROUTER_API_KEY);
 const API_BASE = 'https://openrouter.ai/api/v1/chat/completions';
 const MODELS = [
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
   'meta-llama/llama-3.3-70b-instruct:free',
   'qwen/qwen3-next-80b-a3b-instruct:free',
   'google/gemma-4-31b-it:free',
   'openai/gpt-oss-20b:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'openrouter/owl-alpha',
 ];
 
 export function normalizeOpenRouterKey(key) {

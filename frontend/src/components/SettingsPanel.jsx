@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { COLORS } from '../lib/constants';
-import { getOpenRouterKeyIssue, normalizeOpenRouterKey, testOpenRouterKey } from '../lib/openrouter';
+import { DEFAULT_OPENROUTER_MODELS, getOpenRouterKeyIssue, normalizeOpenRouterKey, testOpenRouterKey } from '../lib/openrouter';
 
 export function SettingsPanel({ settings, onUpdate }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,7 +31,7 @@ export function SettingsPanel({ settings, onUpdate }) {
     setTesting(true);
     setKeyStatus('');
     try {
-      const result = await testOpenRouterKey(settings.openrouterApiKey);
+      const result = await testOpenRouterKey(settings.openrouterApiKey, settings.openrouterModel);
       setKeyStatusType('success');
       setKeyStatus(`Connected through ${result.model}`);
     } catch (error) {
@@ -128,6 +128,30 @@ export function SettingsPanel({ settings, onUpdate }) {
               {keyStatus}
             </div>
           )}
+        </div>
+
+        {/* OpenRouter model override */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{
+            fontSize: 11, color: '#888', display: 'block',
+            marginBottom: 4, fontWeight: 600, textTransform: 'uppercase'
+          }}>
+            OpenRouter model override
+          </label>
+          <input
+            type="text"
+            placeholder={DEFAULT_OPENROUTER_MODELS[0]}
+            value={settings.openrouterModel || ''}
+            onChange={(e) => onUpdate('openrouterModel', e.target.value)}
+            style={{
+              width: '100%', padding: '8px 10px',
+              border: '1px solid #ddd', borderRadius: 6,
+              fontSize: 12, boxSizing: 'border-box', fontFamily: 'monospace'
+            }}
+          />
+          <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>
+            Optional. Leave blank to try all fallback models, starting with {DEFAULT_OPENROUTER_MODELS[0]}.
+          </div>
         </div>
 
         {/* Max replies per day */}

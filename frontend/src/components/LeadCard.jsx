@@ -4,7 +4,7 @@ import { chatCompletion } from '../lib/openrouter';
 import { communityToneGuidance, formatCommunityForPrompt, getCommunityRule } from '../lib/communityRules';
 import { COMMUNITIES } from './CommunitiesPanel';
 
-async function generateReply(comment, name, apiKey, source, channel, stage, variationNum) {
+async function generateReply(comment, name, apiKey, source, channel, stage, variationNum, preferredModel) {
   const communityRule = getCommunityRule(source, channel, COMMUNITIES);
   const platform = formatCommunityForPrompt(communityRule);
   const toneGuidance = communityToneGuidance(communityRule);
@@ -55,6 +55,7 @@ Write a warm, personal reply of 2-3 sentences that:
   const result = await chatCompletion({
     apiKey,
     maxTokens: 300,
+    preferredModel,
     messages: [{ role: 'user', content: prompt }],
   });
 
@@ -106,7 +107,7 @@ function getPostAction(ch, threadUrl, reply) {
   };
 }
 
-export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiKey }) {
+export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiKey, preferredModel }) {
   const [generating, setGenerating] = useState(false);
   const [generatedReply, setGeneratedReply] = useState(lead.reply || '');
   const [posted, setPosted] = useState(false);
@@ -135,7 +136,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setVariationNum(nextVariation);
     setGenerating(true);
     try {
-      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.ch, lead.stage, nextVariation);
+      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.ch, lead.stage, nextVariation, preferredModel);
       setGeneratedReply(reply);
       onUpdate(lead.id, { reply });
     } catch (e) {

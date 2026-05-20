@@ -180,7 +180,10 @@ function App() {
         <CommunitiesPanel onSelect={handleCommunitySelect} />
 
         {/* Post Templates */}
-        <PostTemplatesPanel apiKey={settings.openrouterApiKey} />
+        <PostTemplatesPanel
+          apiKey={settings.openrouterApiKey}
+          preferredModel={settings.openrouterModel}
+        />
 
         {/* Add lead */}
         <div style={{
@@ -309,6 +312,7 @@ function App() {
           onMarkPosted={handleMarkPosted}
           filter={filter}
           apiKey={settings.openrouterApiKey}
+          preferredModel={settings.openrouterModel}
         />
       </div>
     </div>

@@ -2,12 +2,13 @@ const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const FALLBACK_REFERER = 'https://practicesightmarketing.vercel.app';
 
 export const DEFAULT_OPENROUTER_MODELS = [
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
   'meta-llama/llama-3.3-70b-instruct:free',
   'qwen/qwen3-next-80b-a3b-instruct:free',
   'google/gemma-4-31b-it:free',
   'openai/gpt-oss-20b:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'openrouter/owl-alpha',
 ];
 
 export function normalizeOpenRouterKey(key) {
@@ -78,12 +79,20 @@ function summarizeFailures(failures) {
   return `OpenRouter could not generate a reply. Last failure on ${last.model}: ${last.message}`;
 }
 
+function modelList(preferredModel, fallbackModels) {
+  return [preferredModel, ...fallbackModels]
+    .map(model => String(model || '').trim())
+    .filter(Boolean)
+    .filter((model, index, models) => models.indexOf(model) === index);
+}
+
 export async function chatCompletion({
   apiKey,
   messages,
   maxTokens = 300,
   temperature = 0.7,
   models = DEFAULT_OPENROUTER_MODELS,
+  preferredModel = '',
 }) {
   const normalizedKey = normalizeOpenRouterKey(apiKey);
   const keyIssue = getOpenRouterKeyIssue(normalizedKey);
@@ -91,7 +100,7 @@ export async function chatCompletion({
 
   const failures = [];
 
-  for (const model of models) {
+  for (const model of modelList(preferredModel, models)) {
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -131,13 +140,13 @@ export async function chatCompletion({
   throw new Error(summarizeFailures(failures));
 }
 
-export async function testOpenRouterKey(apiKey) {
+export async function testOpenRouterKey(apiKey, preferredModel = '') {
   const result = await chatCompletion({
     apiKey,
     maxTokens: 8,
     temperature: 0,
     messages: [{ role: 'user', content: 'Reply with exactly: OK' }],
-    models: DEFAULT_OPENROUTER_MODELS.slice(0, 4),
+    preferredModel,
   });
 
   return { ok: true, model: result.model };
