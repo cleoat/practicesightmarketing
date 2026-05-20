@@ -10,7 +10,7 @@ import {
   getSettings, setSettings,
   getRedditStats, incrementPostsToday, resetDailyStats
 } from './lib/storage';
-import { COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES, CHANNELS } from './lib/constants';
+import { APP_BUILD_LABEL, COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES, CHANNELS } from './lib/constants';
 import { validateInput, leadSchema } from './lib/validators';
 
 function App() {
@@ -168,6 +168,9 @@ function App() {
             </div>
             <div style={{ fontSize: 12, color: COLORS.muted }}>
               Find billing-frustrated therapists → generate reply → copy & paste → track
+            </div>
+            <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 3 }}>
+              Build: {APP_BUILD_LABEL}
             </div>
           </div>
           <SettingsPanel settings={settings} onUpdate={handleUpdateSetting} />

@@ -1,4 +1,6 @@
 // Pipeline stages
+export const APP_BUILD_LABEL = 'OpenRouter fallback v3';
+
 export const STAGES = [
   { id: 'saw_it', label: 'Saw it', color: '#3B82F6', desc: 'No pain yet' },
   { id: 'engaged', label: 'Talking', color: '#F59E0B', desc: 'Asking questions' },

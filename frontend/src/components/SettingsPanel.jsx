@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { COLORS } from '../lib/constants';
+import { APP_BUILD_LABEL, COLORS } from '../lib/constants';
 import { DEFAULT_OPENROUTER_MODELS, getOpenRouterKeyIssue, normalizeOpenRouterKey, testOpenRouterKey } from '../lib/openrouter';
 
 export function SettingsPanel({ settings, onUpdate }) {
@@ -183,6 +183,9 @@ export function SettingsPanel({ settings, onUpdate }) {
         }}>
           Save & Close
         </button>
+        <div style={{ fontSize: 10, color: COLORS.muted, textAlign: 'center', marginTop: 10 }}>
+          Build: {APP_BUILD_LABEL}
+        </div>
       </div>
     </>
   );
