@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import MetricsBar from './components/MetricsBar';
 import PipelineView from './components/PipelineView';
 import SettingsPanel from './components/SettingsPanel';
-import CommunitiesPanel from './components/CommunitiesPanel';
+import CommunitiesPanel, { COMMUNITIES } from './components/CommunitiesPanel';
 import { PostTemplatesPanel } from './components/PostTemplatesPanel';
+import { inferChannelFromText } from './lib/communityRules';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
@@ -49,6 +50,18 @@ function App() {
   function handleCommunitySelect(name, channel) {
     setInputSource(name);
     setInputChannel(channel);
+  }
+
+  function handleSourceChange(value) {
+    setInputSource(value);
+    const inferred = inferChannelFromText(value, COMMUNITIES);
+    if (inferred && inferred !== inputChannel) setInputChannel(inferred);
+  }
+
+  function handleThreadUrlChange(value) {
+    setInputThreadUrl(value);
+    const inferred = inferChannelFromText(value, COMMUNITIES);
+    if (inferred && inferred !== inputChannel) setInputChannel(inferred);
   }
 
   function handleAddLead() {
@@ -212,7 +225,7 @@ function App() {
               type="text"
               placeholder="Source (e.g. r/therapists)"
               value={inputSource}
-              onChange={(e) => setInputSource(e.target.value)}
+              onChange={(e) => handleSourceChange(e.target.value)}
               style={{ ...inputStyle, color: inputSource ? COLORS.accent : undefined }}
             />
           </div>
@@ -222,7 +235,7 @@ function App() {
             type="text"
             placeholder="Thread URL (optional — paste link to their post so you can find it later)"
             value={inputThreadUrl}
-            onChange={(e) => setInputThreadUrl(e.target.value)}
+            onChange={(e) => handleThreadUrlChange(e.target.value)}
             style={{ ...inputStyle, marginBottom: 8, fontSize: 12, color: COLORS.secondary }}
           />
 

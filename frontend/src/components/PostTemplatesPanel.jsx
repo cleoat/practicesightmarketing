@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { COLORS } from '../lib/constants';
+import { chatCompletion } from '../lib/openrouter';
+import { communityToneGuidance, formatCommunityForPrompt, getCommunityRule } from '../lib/communityRules';
+import { COMMUNITIES } from './CommunitiesPanel';
 
 const TEMPLATES = [
   // ── PHASE 1 — NO LINK, NO PRODUCT MENTION ────────────────────────
@@ -46,7 +49,7 @@ I keep hearing colleagues in private practice describe this low-grade anxiety ar
     title: 'Share PracticeSight — therapists',
     tag: 'Phase 2 · Has link · After 5+ comments on Phase 1',
     when: 'Only post after Phase 1 got real engagement. Introduces PracticeSight.',
-    communities: 'r/therapists R2 · Facebook share post · LinkedIn',
+    communities: 'r/privatepractice · Facebook share post · LinkedIn',
     body: `I'm a therapist who built a billing QA tool for SimplePractice.
 
 You export your reports and drag them in. It shows exactly what needs attention — the specific report and row to check.
@@ -157,18 +160,25 @@ const PHASE_COLORS = {
 
 async function callRemix(body, community, apiKey) {
   const isPhase2 = body.includes('practicesight.pages.dev');
+  const communityRule = getCommunityRule(community, null, COMMUNITIES);
+  const target = formatCommunityForPrompt(communityRule);
+  const productInstruction = isPhase2
+    ? 'Keep practicesight.pages.dev in the post naturally because this target is marked can-mention'
+    : 'NO product mention, NO links — pure question or peer support only';
 
   const prompt = `You are a licensed therapist in private practice who built PracticeSight — a free billing QA tool for SimplePractice users.
 
 ORIGINAL POST:
 "${body}"
 
-TARGET COMMUNITY: ${community || 'therapy community'}
+TARGET COMMUNITY: ${target}
+CHANNEL RULE: ${communityRule.strict ? 'No product names, links, software, companies, services, or promotional language.' : 'Product mention is allowed only when it directly fits the thread.'}
+CHANNEL TONE: ${communityToneGuidance(communityRule)}
 
 Generate 3 fresh remixes. Each must:
 - Start with a completely different opening word/sentence
 - Same core message, different angle
-- ${isPhase2 ? 'Keep practicesight.pages.dev in the post naturally' : 'NO product mention, NO links — pure question only'}
+- ${productInstruction}
 - Under 90 words each
 - Sound like a real therapist, not a marketer
 
@@ -182,24 +192,13 @@ REMIX 2:
 REMIX 3:
 [text]`;
 
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://practicesightmarketing.vercel.app',
-      'X-Title': 'PracticeSight Outreach'
-    },
-    body: JSON.stringify({
-      model: 'meta-llama/llama-3.2-3b-instruct:free',
-      max_tokens: 700,
-      messages: [{ role: 'user', content: prompt }]
-    })
+  const result = await chatCompletion({
+    apiKey,
+    maxTokens: 700,
+    messages: [{ role: 'user', content: prompt }],
   });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  const text = data.choices?.[0]?.message?.content || '';
-  const matches = [...text.matchAll(/REMIX \d+:\n([\s\S]*?)(?=\nREMIX \d+:|$)/g)];
+
+  const matches = [...result.text.matchAll(/(?:^|\n)\s*(?:\*\*)?REMIX\s*\d+\s*:?(?:\*\*)?\s*\n([\s\S]*?)(?=\n\s*(?:\*\*)?REMIX\s*\d+\s*:|$)/gi)];
   return matches.map(m => m[1].trim()).filter(Boolean);
 }
 
@@ -235,12 +234,19 @@ function TemplateCard({ template, apiKey }) {
 
   const handleRemix = async () => {
     if (!apiKey) { setError('Add your OpenRouter API key in Settings first'); return; }
+    const targetCommunity = community || template.communities.split('·')[0].trim();
+    const rule = getCommunityRule(targetCommunity, null, COMMUNITIES);
+    const hasProductMention = /PracticeSight|practicesight\.pages\.dev/i.test(template.body);
+    if (hasProductMention && rule.strict) {
+      setError(`${targetCommunity} is marked no-promotion. Use a Phase 1 template or choose a can-mention community.`);
+      return;
+    }
     setGenerating(true);
     setError('');
     try {
       const results = await callRemix(
         template.body,
-        community || template.communities.split('·')[0].trim(),
+        targetCommunity,
         apiKey
       );
       if (!results.length) throw new Error('No remixes generated — try again');

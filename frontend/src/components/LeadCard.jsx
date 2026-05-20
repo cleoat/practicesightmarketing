@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
 import { STAGES, CHANNELS, COLORS } from '../lib/constants';
+import { chatCompletion } from '../lib/openrouter';
+import { communityToneGuidance, formatCommunityForPrompt, getCommunityRule } from '../lib/communityRules';
 import { COMMUNITIES } from './CommunitiesPanel';
 
-function isCommunityStrict(source) {
-  if (!source) return false;
-  const match = COMMUNITIES.find(c => c.name === source);
-  return match ? !match.safe : false;
-}
-
-async function generateReply(comment, name, apiKey, source, stage, variationNum) {
-  const platform = source || 'an online therapy community';
-  const strict = isCommunityStrict(source);
-  const isWarm = !strict && ['hot', 'testing', 'feedback'].includes(stage);
+async function generateReply(comment, name, apiKey, source, channel, stage, variationNum) {
+  const communityRule = getCommunityRule(source, channel, COMMUNITIES);
+  const platform = formatCommunityForPrompt(communityRule);
+  const toneGuidance = communityToneGuidance(communityRule);
+  const isWarm = communityRule.canMentionProduct && ['hot', 'testing', 'feedback'].includes(stage);
   const variation = variationNum || 1;
+  const ruleGuidance = communityRule.strict
+    ? 'This community is no-promotion. Do not mention PracticeSight, apps, tools, software, companies, services, links, or DMs.'
+    : 'Product mentions are only allowed for hot/testing/feedback leads. For earlier stages, keep it pure peer support.';
 
   const coldPrompt = `You are a licensed therapist in private practice giving peer support in ${platform}.
+
+Community rule: ${ruleGuidance}
+Channel tone: ${toneGuidance}
 
 ${name} posted this:
 "${comment}"
@@ -32,7 +35,10 @@ The reply should:
 
 This is peer support, not marketing. Zero promotion.`;
 
-  const warmPrompt = `You are a therapist in private practice who personally solved their billing headaches.
+  const warmPrompt = `You are a therapist in private practice who personally solved their billing headaches, replying in ${platform}.
+
+Community rule: Product mentions are allowed here because the selected community is marked can-mention and this lead is ${stage}.
+Channel tone: ${toneGuidance}
 
 ${name} is actively looking for a billing solution and wrote:
 "${comment}"
@@ -45,23 +51,14 @@ Write a warm, personal reply of 2-3 sentences that:
 - No exclamation marks. No corporate language.
 - Under 80 words.`;
 
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://practicesightmarketing.vercel.app',
-      'X-Title': 'PracticeSight Outreach'
-    },
-    body: JSON.stringify({
-      model: 'meta-llama/llama-3.2-3b-instruct:free',
-      max_tokens: 300,
-      messages: [{ role: 'user', content: isWarm ? warmPrompt : coldPrompt }]
-    })
+  const prompt = isWarm ? warmPrompt : coldPrompt;
+  const result = await chatCompletion({
+    apiKey,
+    maxTokens: 300,
+    messages: [{ role: 'user', content: prompt }],
   });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.choices?.[0]?.message?.content || '';
+
+  return result.text;
 }
 
 function getPostAction(ch, threadUrl, reply) {
@@ -114,7 +111,8 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
   const [generatedReply, setGeneratedReply] = useState(lead.reply || '');
   const [posted, setPosted] = useState(false);
   const [variationNum, setVariationNum] = useState(1);
-  const strict = isCommunityStrict(lead.source);
+  const communityRule = getCommunityRule(lead.source, lead.ch, COMMUNITIES);
+  const strict = communityRule.strict;
 
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpText, setFollowUpText] = useState('');
@@ -137,7 +135,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setVariationNum(nextVariation);
     setGenerating(true);
     try {
-      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.stage, nextVariation);
+      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.ch, lead.stage, nextVariation);
       setGeneratedReply(reply);
       onUpdate(lead.id, { reply });
     } catch (e) {
@@ -244,7 +242,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         </select>
 
         {/* Community mode indicator */}
-        {lead.source && (
+        {(lead.source || lead.ch === 'reddit') && (
           <div style={{
             fontSize: 10, marginBottom: 6, padding: '4px 8px', borderRadius: 6,
             background: strict ? '#FFF5EB' : '#F0FDF4',
@@ -252,8 +250,8 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
             display: 'flex', alignItems: 'center', gap: 4
           }}>
             {strict
-              ? '⚠ Strict community — reply will never mention any product'
-              : `✓ ${['hot','testing','feedback'].includes(lead.stage) ? 'Warm lead — reply may mention PracticeSight' : 'Building trust — pure peer support mode'}`}
+              ? `${communityRule.assumed ? 'Unknown Reddit source' : 'Strict community'} — reply will never mention any product`
+              : `${['hot','testing','feedback'].includes(lead.stage) ? 'Warm lead — reply may mention PracticeSight' : 'Building trust — pure peer support mode'}`}
           </div>
         )}
 

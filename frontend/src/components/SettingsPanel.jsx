@@ -1,8 +1,45 @@
 import React, { useState } from 'react';
 import { COLORS } from '../lib/constants';
+import { getOpenRouterKeyIssue, normalizeOpenRouterKey, testOpenRouterKey } from '../lib/openrouter';
 
 export function SettingsPanel({ settings, onUpdate }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [keyStatus, setKeyStatus] = useState('');
+  const [keyStatusType, setKeyStatusType] = useState('info');
+
+  const handleKeyChange = (value) => {
+    onUpdate('openrouterApiKey', value);
+    setKeyStatus('');
+  };
+
+  const handleKeyBlur = (value) => {
+    const normalized = normalizeOpenRouterKey(value);
+    if (normalized !== value) {
+      onUpdate('openrouterApiKey', normalized);
+    }
+  };
+
+  const handleTestKey = async () => {
+    const issue = getOpenRouterKeyIssue(settings.openrouterApiKey);
+    if (issue) {
+      setKeyStatusType('error');
+      setKeyStatus(issue);
+      return;
+    }
+
+    setTesting(true);
+    setKeyStatus('');
+    try {
+      const result = await testOpenRouterKey(settings.openrouterApiKey);
+      setKeyStatusType('success');
+      setKeyStatus(`Connected through ${result.model}`);
+    } catch (error) {
+      setKeyStatusType('error');
+      setKeyStatus(error.message || 'OpenRouter key test failed');
+    }
+    setTesting(false);
+  };
 
   if (!isOpen) {
     return (
@@ -56,7 +93,8 @@ export function SettingsPanel({ settings, onUpdate }) {
             type="password"
             placeholder="sk-or-v1-..."
             value={settings.openrouterApiKey || ''}
-            onChange={(e) => onUpdate('openrouterApiKey', e.target.value)}
+            onChange={(e) => handleKeyChange(e.target.value)}
+            onBlur={(e) => handleKeyBlur(e.target.value)}
             style={{
               width: '100%', padding: '8px 10px',
               border: '1px solid #ddd', borderRadius: 6,
@@ -64,8 +102,32 @@ export function SettingsPanel({ settings, onUpdate }) {
             }}
           />
           <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>
-            Free at openrouter.ai · uses Llama 3.2 · $0 cost · stored locally
+            Use an OpenRouter key, not an OpenAI key. Stored locally in this browser.
           </div>
+          <button
+            onClick={handleTestKey}
+            disabled={testing}
+            style={{
+              marginTop: 8, padding: '7px 12px', fontSize: 11, fontWeight: 700,
+              background: testing ? '#9CA3AF' : '#fff',
+              color: testing ? '#fff' : COLORS.secondary,
+              border: `1px solid ${testing ? '#9CA3AF' : COLORS.secondary}`,
+              borderRadius: 6, cursor: testing ? 'not-allowed' : 'pointer',
+              fontFamily: 'inherit'
+            }}
+          >
+            {testing ? 'Testing...' : 'Test OpenRouter key'}
+          </button>
+          {keyStatus && (
+            <div style={{
+              fontSize: 10, marginTop: 6, padding: '6px 8px', borderRadius: 6,
+              background: keyStatusType === 'success' ? '#E5F5EB' : '#FFE5E5',
+              color: keyStatusType === 'success' ? '#166534' : '#C44',
+              lineHeight: 1.4
+            }}>
+              {keyStatus}
+            </div>
+          )}
         </div>
 
         {/* Max replies per day */}

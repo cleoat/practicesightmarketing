@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { COLORS } from '../lib/constants';
+import { CUSTOM_COMMUNITIES_STORAGE_KEY } from '../lib/communityRules';
 
 export const COMMUNITIES = [
   // ── REDDIT ────────────────────────────────────────────────────────
@@ -268,13 +269,11 @@ export const COMMUNITIES = [
   },
 ];
 
-const STORAGE_KEY = 'ps_custom_communities';
-
 function loadCustom() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(CUSTOM_COMMUNITIES_STORAGE_KEY) || '[]'); } catch { return []; }
 }
 function saveCustom(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  localStorage.setItem(CUSTOM_COMMUNITIES_STORAGE_KEY, JSON.stringify(list));
 }
 
 const PLATFORM_META = {
