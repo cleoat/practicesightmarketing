@@ -167,7 +167,7 @@ function App() {
         <CommunitiesPanel onSelect={handleCommunitySelect} />
 
         {/* Post Templates */}
-        <PostTemplatesPanel apiKey={settings.anthropicApiKey} />
+        <PostTemplatesPanel apiKey={settings.openrouterApiKey} />
 
         {/* Add lead */}
         <div style={{
@@ -295,7 +295,7 @@ function App() {
           onReply={handleReply}
           onMarkPosted={handleMarkPosted}
           filter={filter}
-          apiKey={settings.anthropicApiKey}
+          apiKey={settings.openrouterApiKey}
         />
       </div>
     </div>

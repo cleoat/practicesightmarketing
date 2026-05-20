@@ -44,19 +44,19 @@ export function SettingsPanel({ settings, onUpdate }) {
           }}>×</button>
         </div>
 
-        {/* Anthropic API Key */}
+        {/* OpenRouter API Key */}
         <div style={{ marginBottom: 16 }}>
           <label style={{
             fontSize: 11, color: '#888', display: 'block',
             marginBottom: 4, fontWeight: 600, textTransform: 'uppercase'
           }}>
-            Anthropic API Key
+            OpenRouter API Key
           </label>
           <input
             type="password"
-            placeholder="sk-ant-..."
-            value={settings.anthropicApiKey || ''}
-            onChange={(e) => onUpdate('anthropicApiKey', e.target.value)}
+            placeholder="sk-or-v1-..."
+            value={settings.openrouterApiKey || ''}
+            onChange={(e) => onUpdate('openrouterApiKey', e.target.value)}
             style={{
               width: '100%', padding: '8px 10px',
               border: '1px solid #ddd', borderRadius: 6,
@@ -64,7 +64,7 @@ export function SettingsPanel({ settings, onUpdate }) {
             }}
           />
           <div style={{ fontSize: 10, color: '#aaa', marginTop: 4 }}>
-            Get yours at console.anthropic.com · stored locally, never shared
+            Free at openrouter.ai · uses Llama 3.2 · $0 cost · stored locally
           </div>
         </div>
 

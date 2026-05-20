@@ -1,64 +1,178 @@
 import React, { useState } from 'react';
 import { COLORS } from '../lib/constants';
-import { COMMUNITIES } from './CommunitiesPanel';
 
-const SAFE_COMMUNITIES = COMMUNITIES.filter(c => c.safe);
-const STRICT_COMMUNITIES = COMMUNITIES.filter(c => !c.safe);
+const TEMPLATES = [
+  // ── PHASE 1 — NO LINK, NO PRODUCT MENTION ────────────────────────
+  {
+    id: 1, phase: 1,
+    title: 'Opening question — therapists',
+    tag: 'Phase 1 · No product mention',
+    when: 'Post this FIRST in any therapist community. No link. No product. Just a question.',
+    communities: 'r/therapists · r/socialwork · r/counseling · r/psychotherapy · Facebook groups',
+    body: `For those of you in private practice who do your own insurance billing — how do you actually do your month-end billing review?
 
-const DEFAULT_TEMPLATES = [
-  {
-    id: 1,
-    title: 'Month-end billing review',
-    tag: 'Engagement post',
-    body: `For those of you in private practice who do your own insurance billing — how do you actually do your month-end review?\n\nDo you have a system or is it more just knowing your numbers well enough to catch things?\n\nGenuinely curious what works.`,
+Do you have a specific routine, or is it more just knowing your numbers well enough to catch things?
+
+Genuinely curious what works.`,
   },
   {
-    id: 2,
-    title: 'Unbilled sessions — catching the gaps',
-    tag: 'Pain point post',
-    body: `Anyone else ever find sessions that slipped through the billing cracks at month end?\n\nCurious what your process looks like for catching those before they age out.`,
+    id: 2, phase: 1,
+    title: 'Opening question — billing managers',
+    tag: 'Phase 1 · No product mention',
+    when: 'For billing communities. Practical angle, not emotional.',
+    communities: 'r/medicalbilling · SimplePractice Billing Help FB · Insurance Billing for Therapists FB',
+    body: `Does anyone have a clean process for month-end billing review in SimplePractice?
+
+The reports are all there but getting a prioritized action list out of them — what's aging, what's unfiled, what needs follow-up before 90 days — seems to require a lot of manual cross-referencing.
+
+Is that your experience or have you found a cleaner way?`,
   },
   {
-    id: 3,
-    title: 'ERA enrollment tip',
-    tag: 'Value tip',
-    body: `Quick tip for those manually checking EOBs: if you're not enrolled in ERA with all your payers, you're making reconciliation 10x harder than it needs to be.\n\nWho's done this recently — any payers that were surprisingly easy or hard to set up?`,
+    id: 3, phase: 1,
+    title: 'Opening question — anxiety angle',
+    tag: 'Phase 1 · No product mention',
+    when: 'Emotional angle. Works well in large therapist communities.',
+    communities: 'r/therapists · Facebook private practice groups',
+    body: `Do you actually know if your insurance billing is clean right now?
+
+Or are you kind of just hoping everything is okay?
+
+I keep hearing colleagues in private practice describe this low-grade anxiety around it — not knowing if a claim is stuck, something went unbilled, a balance is aging somewhere. Curious if that's common or if most people have a real system.`,
+  },
+
+  // ── PHASE 2 — AFTER ENGAGEMENT, WITH LINK ─────────────────────────
+  {
+    id: 4, phase: 2,
+    title: 'Share PracticeSight — therapists',
+    tag: 'Phase 2 · Has link · After 5+ comments on Phase 1',
+    when: 'Only post after Phase 1 got real engagement. Introduces PracticeSight.',
+    communities: 'r/therapists R2 · Facebook share post · LinkedIn',
+    body: `I'm a therapist who built a billing QA tool for SimplePractice.
+
+You export your reports and drag them in. It shows exactly what needs attention — the specific report and row to check.
+
+In real data it found things like $970 sitting unbilled, 4 claims stuck in Error, 2 appointments never filed.
+
+Runs in your browser. Nothing uploaded. No account needed. Free.
+
+practicesight.pages.dev
+
+Would love to know what it finds in your real data.`,
   },
   {
-    id: 4,
-    title: 'Claim denial frustration',
-    tag: 'Pain point post',
-    body: `Is anyone else getting more claim denials lately or is it just me?\n\nSeems like every few weeks there's a new reason they kick things back. What's your process for working through denials without it eating your whole day?`,
+    id: 5, phase: 2,
+    title: 'Share PracticeSight — billing managers',
+    tag: 'Phase 2 · Has link · Billing audience',
+    when: 'For billing communities after adding value in comments.',
+    communities: 'r/medicalbilling · SimplePractice Billing Help FB',
+    body: `I built a browser-based billing review tool specifically for SimplePractice.
+
+You export the standard reports — Outstanding Balances, Unpaid Insurance Appointments, Filed Claims, Client Invoice Aging — and drag them in. It cross-references everything and gives you a prioritized action list. What's aging, what was never filed, what needs attention before it hits 90 days.
+
+Runs entirely in your browser. Nothing uploaded. Free.
+
+practicesight.pages.dev
+
+Would love feedback from anyone who does this regularly.`,
+  },
+
+  // ── REPLY SCRIPTS ──────────────────────────────────────────────────
+  {
+    id: 6, phase: 0,
+    title: 'Reply — someone describes the pain',
+    tag: 'Reply script · When pain is clear',
+    when: 'When someone says they check manually, worry something slipped, or have no real system.',
+    communities: 'Any thread',
+    body: `That's actually why I built PracticeSight.
+
+You export your SimplePractice reports and drag them in. It cross-references everything and gives you a list of what needs attention — specific report, specific row. No guessing.
+
+Runs in your browser, nothing uploaded. Free — practicesight.pages.dev
+
+Would love to know if it finds anything you didn't already know about.`,
+  },
+  {
+    id: 7, phase: 0,
+    title: 'Reply — they use Headway or Alma',
+    tag: 'Reply script · Not a fit — ask for referral',
+    when: "When billing is handled for them. Ask for referral, don't pitch.",
+    communities: 'Any channel',
+    body: `That makes sense — if Headway is handling the billing side you probably wouldn't need this directly.
+
+But if you know any colleagues who use SimplePractice and do their own insurance billing, I'd love an intro. That's exactly who I built it for.
+
+No pressure either way.`,
+  },
+  {
+    id: 8, phase: 0,
+    title: 'Follow-up after they try it',
+    tag: 'Reply script · Feedback ask',
+    when: 'After someone has tested the app.',
+    communities: 'Any channel',
+    body: `Thank you so much.
+
+Three quick questions if you have two minutes:
+1. Did it find anything you didn't already know about?
+2. Was anything confusing?
+3. Did it miss something you expected it to catch?
+
+No wrong answers — just want to know if it's solving a real problem.`,
+  },
+  {
+    id: 9, phase: 0,
+    title: 'Direct message to a colleague',
+    tag: 'DM script · Highest conversion',
+    when: 'Send to people you actually know. Highest conversion of any channel.',
+    communities: 'WhatsApp · Text · Email · DM',
+    body: `Hey [name] — I built a billing QA tool for SimplePractice and need a real therapist to try it.
+
+Takes 3 minutes. Nothing stored anywhere — runs in your browser.
+
+Would you be willing to try it this week?
+practicesight.pages.dev
+
+Even "it worked" or "it was confusing" helps me.`,
+  },
+  {
+    id: 10, phase: 0,
+    title: 'WhatsApp group invite',
+    tag: 'WhatsApp script · Warm group message',
+    when: 'Send to your existing WhatsApp group. Colleague tone, not a pitch.',
+    communities: 'WhatsApp groups',
+    body: `Hey everyone — I've been building something for therapists who do their own billing in SimplePractice and I'm looking for a few colleagues to give me honest feedback on whether it's actually useful.
+
+Takes 3 minutes. Nothing stored anywhere.
+
+If curious: practicesight.pages.dev
+
+No pressure — even "this isn't for me" helps.`,
   },
 ];
 
-async function remixTemplate(body, apiKey, count) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 600,
-      messages: [{
-        role: 'user',
-        content: `Here's an outreach post for private practice therapy communities on Reddit/Facebook:
+const PHASE_COLORS = {
+  1: { bg: '#EFF6FF', color: '#1D4ED8', label: 'Phase 1 — No product mention' },
+  2: { bg: '#F0FDF4', color: '#166534', label: 'Phase 2 — Has link' },
+  0: { bg: '#F5F4F0', color: '#555', label: 'Reply scripts' },
+};
 
+async function callRemix(body, community, apiKey) {
+  const isPhase2 = body.includes('practicesight.pages.dev');
+
+  const prompt = `You are a licensed therapist in private practice who built PracticeSight — a free billing QA tool for SimplePractice users.
+
+ORIGINAL POST:
 "${body}"
 
-Generate ${count} variations of this post. Each should:
-- Explore the same billing pain point from a different angle or framing
-- Sound like a genuine question from a fellow therapist in private practice
-- NO promotional language, NO product names, NO company mentions — pure peer value
-- Different opening sentence each time
-- Under 90 words each
-- Conversational, not formal
+TARGET COMMUNITY: ${community || 'therapy community'}
 
-Format exactly as:
+Generate 3 fresh remixes. Each must:
+- Start with a completely different opening word/sentence
+- Same core message, different angle
+- ${isPhase2 ? 'Keep practicesight.pages.dev in the post naturally' : 'NO product mention, NO links — pure question only'}
+- Under 90 words each
+- Sound like a real therapist, not a marketer
+
+Format exactly:
 REMIX 1:
 [text]
 
@@ -66,134 +180,183 @@ REMIX 2:
 [text]
 
 REMIX 3:
-[text]`,
-      }],
-    }),
+[text]`;
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://practicesightmarketing.vercel.app',
+      'X-Title': 'PracticeSight Outreach'
+    },
+    body: JSON.stringify({
+      model: 'meta-llama/llama-3.2-3b-instruct:free',
+      max_tokens: 700,
+      messages: [{ role: 'user', content: prompt }]
+    })
   });
-  const data = await response.json();
+  const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  const text = data.content[0].text;
+  const text = data.choices?.[0]?.message?.content || '';
   const matches = [...text.matchAll(/REMIX \d+:\n([\s\S]*?)(?=\nREMIX \d+:|$)/g)];
   return matches.map(m => m[1].trim()).filter(Boolean);
+}
+
+function PhaseSection({ phase, templates, apiKey }) {
+  const pc = PHASE_COLORS[phase];
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: pc.color, background: pc.bg,
+        padding: '6px 14px', borderRadius: 6, marginBottom: 10,
+        textTransform: 'uppercase', letterSpacing: '.5px'
+      }}>
+        {pc.label}
+      </div>
+      {templates.map(t => <TemplateCard key={t.id} template={t} apiKey={apiKey} />)}
+    </div>
+  );
 }
 
 function TemplateCard({ template, apiKey }) {
   const [remixes, setRemixes] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
-  const [copiedId, setCopiedId] = useState(null);
+  const [copied, setCopied] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [community, setCommunity] = useState('');
 
   const copy = (text, id) => {
     navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1500);
+    setCopied(id);
+    setTimeout(() => setCopied(null), 1500);
   };
 
   const handleRemix = async () => {
-    if (!apiKey) { alert('Add your Anthropic API key in Settings first (⚙ top right).'); return; }
+    if (!apiKey) { setError('Add your OpenRouter API key in Settings first'); return; }
     setGenerating(true);
     setError('');
     try {
-      const results = await remixTemplate(template.body, apiKey, 3);
+      const results = await callRemix(
+        template.body,
+        community || template.communities.split('·')[0].trim(),
+        apiKey
+      );
+      if (!results.length) throw new Error('No remixes generated — try again');
       setRemixes(results);
       setExpanded(true);
     } catch (e) {
-      setError(e.message || 'Generation failed');
+      setError(e.message);
     }
     setGenerating(false);
   };
 
   return (
-    <div style={{ borderBottom: `1px solid ${COLORS.border}`, padding: '12px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <span style={{ fontSize: 12, fontWeight: 700 }}>{template.title}</span>
-        <span style={{
-          fontSize: 10, padding: '2px 7px', borderRadius: 10, fontWeight: 700,
-          background: '#F3F4F6', color: '#555'
-        }}>{template.tag}</span>
-        <span style={{
-          fontSize: 10, padding: '2px 7px', borderRadius: 10, fontWeight: 700,
-          background: '#FFF5EB', color: '#854F0B', marginLeft: 'auto'
-        }}>no product mention</span>
+    <div style={{
+      border: `1px solid ${COLORS.border}`, borderRadius: 10,
+      overflow: 'hidden', marginBottom: 8
+    }}>
+      {/* Header */}
+      <div style={{ padding: '10px 14px', background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>{template.title}</span>
+          <span style={{
+            fontSize: 10, padding: '2px 7px', borderRadius: 10,
+            background: '#fff', color: '#555', border: `1px solid ${COLORS.border}`
+          }}>
+            {template.tag}
+          </span>
+        </div>
+        <div style={{ fontSize: 11, color: COLORS.muted, marginBottom: 2 }}>
+          <strong>When:</strong> {template.when}
+        </div>
+        <div style={{ fontSize: 11, color: COLORS.muted }}>
+          <strong>Post in:</strong> {template.communities}
+        </div>
       </div>
 
-      {/* Original post */}
-      <div
-        onClick={() => copy(template.body, 'orig-' + template.id)}
-        title="Click to copy"
-        style={{
-          background: COLORS.bg, padding: '8px 10px', borderRadius: 6,
-          fontSize: 11, color: '#555', lineHeight: 1.6, marginBottom: 6,
-          cursor: 'copy', whiteSpace: 'pre-wrap'
-        }}
-      >
-        {template.body}
-      </div>
-      {copiedId === 'orig-' + template.id && (
-        <div style={{ fontSize: 10, color: COLORS.success, marginBottom: 4 }}>✓ Copied</div>
-      )}
-
-      {/* Which communities to use this in */}
-      <div style={{ fontSize: 10, color: COLORS.muted, marginBottom: 8 }}>
-        Safe for: {STRICT_COMMUNITIES.map(c => c.name).join(', ')} · and all others
-      </div>
-
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button
-          onClick={handleRemix}
-          disabled={generating}
+      {/* Body */}
+      <div style={{ padding: '10px 14px' }}>
+        {/* Original — click to copy */}
+        <div
+          onClick={() => copy(template.body, 'orig-' + template.id)}
+          title="Click to copy"
           style={{
-            padding: '5px 12px', fontSize: 11, fontWeight: 700,
-            background: generating ? '#9CA3AF' : COLORS.primary,
-            color: '#fff', border: 'none', borderRadius: 6,
-            cursor: generating ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
+            background: '#fff', padding: '10px 12px', borderRadius: 8,
+            fontSize: 12, color: '#333', lineHeight: 1.7, marginBottom: 8,
+            cursor: 'copy', whiteSpace: 'pre-wrap', border: `1px solid ${COLORS.border}`
           }}
         >
-          {generating ? '⏳ Remixing...' : '↺ Get 3 remixes'}
-        </button>
-        {remixes.length > 0 && (
-          <button
-            onClick={() => setExpanded(!expanded)}
+          {template.body}
+        </div>
+        {copied === 'orig-' + template.id && (
+          <div style={{ fontSize: 10, color: '#166534', marginBottom: 4 }}>✓ Copied</div>
+        )}
+
+        {/* Remix controls */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            value={community}
+            onChange={e => setCommunity(e.target.value)}
+            placeholder="Community (e.g. r/therapists)"
             style={{
-              padding: '5px 10px', fontSize: 11,
-              background: 'none', border: `1px solid ${COLORS.border}`,
-              borderRadius: 6, cursor: 'pointer', color: COLORS.muted, fontFamily: 'inherit'
+              flex: 1, minWidth: 140, padding: '5px 10px', fontSize: 11,
+              border: `1px solid ${COLORS.border}`, borderRadius: 6,
+              fontFamily: 'inherit', background: '#fff'
+            }}
+          />
+          <button
+            onClick={handleRemix}
+            disabled={generating}
+            style={{
+              padding: '6px 14px', fontSize: 11, fontWeight: 700,
+              background: generating ? '#9CA3AF' : COLORS.primary,
+              color: '#fff', border: 'none', borderRadius: 6,
+              cursor: generating ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
             }}
           >
-            {expanded ? '▲ hide' : `▼ show ${remixes.length} remixes`}
+            {generating ? '⏳ Remixing...' : '↺ Get 3 remixes'}
           </button>
-        )}
-      </div>
-
-      {error && <div style={{ fontSize: 11, color: '#C44', marginTop: 6 }}>Error: {error}</div>}
-
-      {expanded && remixes.length > 0 && (
-        <div style={{ marginTop: 10 }}>
-          {remixes.map((r, i) => (
-            <div key={i} style={{ marginBottom: 8 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.muted, marginBottom: 3 }}>
-                Remix {i + 1}
-              </div>
-              <div
-                onClick={() => copy(r, `remix-${template.id}-${i}`)}
-                title="Click to copy"
-                style={{
-                  background: '#F0FDF4', border: '1px solid #B8E5C8',
-                  borderRadius: 6, padding: '8px 10px', fontSize: 11,
-                  color: '#166534', lineHeight: 1.6, cursor: 'copy',
-                  whiteSpace: 'pre-wrap'
-                }}
-              >
-                {r}
-              </div>
-              {copiedId === `remix-${template.id}-${i}` && (
-                <div style={{ fontSize: 10, color: COLORS.success, marginTop: 2 }}>✓ Copied</div>
-              )}
-            </div>
-          ))}
+          {remixes.length > 0 && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              style={{
+                padding: '6px 10px', fontSize: 11, background: 'none',
+                border: `1px solid ${COLORS.border}`, borderRadius: 6,
+                cursor: 'pointer', color: COLORS.muted, fontFamily: 'inherit'
+              }}
+            >
+              {expanded ? '▲ hide' : `▼ show ${remixes.length}`}
+            </button>
+          )}
         </div>
-      )}
+
+        {error && <div style={{ fontSize: 11, color: '#C44', marginTop: 6 }}>{error}</div>}
+
+        {/* Remixes */}
+        {expanded && remixes.map((r, i) => (
+          <div key={i} style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: COLORS.muted, marginBottom: 3 }}>
+              Remix {i + 1}
+            </div>
+            <div
+              onClick={() => copy(r, `remix-${template.id}-${i}`)}
+              title="Click to copy"
+              style={{
+                background: '#F0FDF4', border: '1px solid #B8E5C8', borderRadius: 6,
+                padding: '8px 10px', fontSize: 11, color: '#166534',
+                lineHeight: 1.7, cursor: 'copy', whiteSpace: 'pre-wrap'
+              }}
+            >
+              {r}
+            </div>
+            {copied === `remix-${template.id}-${i}` && (
+              <div style={{ fontSize: 10, color: '#166534', marginTop: 2 }}>✓ Copied</div>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -214,32 +377,20 @@ export function PostTemplatesPanel({ apiKey }) {
           background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>✏️ Post Templates</span>
-          <span style={{ fontSize: 11, color: COLORS.muted }}>
-            Value-first posts to start conversations · click to copy · ↺ remix = fresh variation
+        <div>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>✏️ Post Templates + Remix</span>
+          <span style={{ fontSize: 11, color: COLORS.muted, marginLeft: 8 }}>
+            Phase 1 → Phase 2 → Reply scripts · click to copy · remix for each community
           </span>
         </div>
-        <span style={{ fontSize: 11, color: COLORS.muted }}>{open ? '▲ hide' : '▼ show'}</span>
+        <span style={{ fontSize: 11, color: COLORS.muted }}>{open ? '▲' : '▼'}</span>
       </button>
 
       {open && (
-        <div style={{ borderTop: `1px solid ${COLORS.border}` }}>
-          {/* Safe community guide */}
-          <div style={{
-            padding: '8px 16px', background: COLORS.bg,
-            borderBottom: `1px solid ${COLORS.border}`,
-            fontSize: 10, color: COLORS.muted
-          }}>
-            <strong style={{ color: '#166534' }}>✓ Can post in:</strong>{' '}
-            {SAFE_COMMUNITIES.map(c => c.name).join(' · ')}
-            {'  '}
-            <strong style={{ color: '#854F0B' }}>⚠ Value-only in:</strong>{' '}
-            {STRICT_COMMUNITIES.map(c => c.name).join(' · ')}
-          </div>
-          {DEFAULT_TEMPLATES.map(t => (
-            <TemplateCard key={t.id} template={t} apiKey={apiKey} />
-          ))}
+        <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: '14px 16px' }}>
+          <PhaseSection phase={1} templates={TEMPLATES.filter(t => t.phase === 1)} apiKey={apiKey} />
+          <PhaseSection phase={2} templates={TEMPLATES.filter(t => t.phase === 2)} apiKey={apiKey} />
+          <PhaseSection phase={0} templates={TEMPLATES.filter(t => t.phase === 0)} apiKey={apiKey} />
         </div>
       )}
     </div>

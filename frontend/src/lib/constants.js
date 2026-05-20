@@ -67,7 +67,7 @@ export const DEFAULT_LEAD = {
 // Default settings template
 export const DEFAULT_SETTINGS = {
   maxPostsPerDay: 3,
-  anthropicApiKey: ''
+  openrouterApiKey: ''
 };
 
 // Default Reddit stats

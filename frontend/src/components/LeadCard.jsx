@@ -45,23 +45,23 @@ Write a warm, personal reply of 2-3 sentences that:
 - No exclamation marks. No corporate language.
 - Under 80 words.`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: "POST",
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
     headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "anthropic-dangerous-direct-browser-access": "true"
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://practicesightmarketing.vercel.app',
+      'X-Title': 'PracticeSight Outreach'
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: 'meta-llama/llama-3.2-3b-instruct:free',
       max_tokens: 300,
-      messages: [{ role: "user", content: isWarm ? warmPrompt : coldPrompt }]
+      messages: [{ role: 'user', content: isWarm ? warmPrompt : coldPrompt }]
     })
   });
   const data = await response.json();
   if (data.error) throw new Error(data.error.message);
-  return data.content[0].text;
+  return data.choices?.[0]?.message?.content || '';
 }
 
 function getPostAction(ch, threadUrl, reply) {
@@ -130,7 +130,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
 
   const handleGenerate = async () => {
     if (!apiKey) {
-      alert('Add your Anthropic API key in Settings first (⚙ top right).');
+      alert('Add your OpenRouter API key in Settings first (⚙ top right). Free at openrouter.ai');
       return;
     }
     const nextVariation = (variationNum % 4) + 1;
