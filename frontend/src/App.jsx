@@ -3,6 +3,7 @@ import MetricsBar from './components/MetricsBar';
 import PipelineView from './components/PipelineView';
 import SettingsPanel from './components/SettingsPanel';
 import CommunitiesPanel from './components/CommunitiesPanel';
+import { PostTemplatesPanel } from './components/PostTemplatesPanel';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
@@ -164,6 +165,9 @@ function App() {
 
         {/* Communities */}
         <CommunitiesPanel onSelect={handleCommunitySelect} />
+
+        {/* Post Templates */}
+        <PostTemplatesPanel apiKey={settings.anthropicApiKey} />
 
         {/* Add lead */}
         <div style={{

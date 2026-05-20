@@ -1,9 +1,51 @@
 import React, { useState } from 'react';
 import { STAGES, CHANNELS, COLORS } from '../lib/constants';
+import { COMMUNITIES } from './CommunitiesPanel';
 
-async function generateReply(comment, name, apiKey, source) {
-  const community = source || 'an online therapy community';
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+function isCommunityStrict(source) {
+  if (!source) return false;
+  const match = COMMUNITIES.find(c => c.name === source);
+  return match ? !match.safe : false;
+}
+
+async function generateReply(comment, name, apiKey, source, stage, variationNum) {
+  const platform = source || 'an online therapy community';
+  const strict = isCommunityStrict(source);
+  const isWarm = !strict && ['hot', 'testing', 'feedback'].includes(stage);
+  const variation = variationNum || 1;
+
+  const coldPrompt = `You are a licensed therapist in private practice giving peer support in ${platform}.
+
+${name} posted this:
+"${comment}"
+
+Write reply variation #${variation} of 4. Each variation uses a different opening and angle.
+
+The reply should:
+- Empathize with their exact frustration using their own words
+- Share ONE specific, practical tip from personal billing experience (e.g. batching ERA enrollment, following up on aging claims after 30 days, calling payer reps directly, checking claim status in the portal before calling)
+- End with a genuine question about their specific situation to start a real conversation
+- Sound exactly like a fellow therapist — NOT a company, marketer, or vendor
+- NEVER mention any product, app, company, software, or service by name
+- No exclamation marks. No "I hope this helps." No generic phrases.
+- Under 80 words.
+
+This is peer support, not marketing. Zero promotion.`;
+
+  const warmPrompt = `You are a therapist in private practice who personally solved their billing headaches.
+
+${name} is actively looking for a billing solution and wrote:
+"${comment}"
+
+Write a warm, personal reply of 2-3 sentences that:
+- Acknowledges their specific frustration
+- Shares that you personally found PracticeSight which handles insurance billing and revenue recovery for therapy practices — frame it as a personal discovery ("I found something that actually fixed this for me")
+- Invites them to ask you more or DM
+- Sounds like a real person sharing their experience, NOT an ad
+- No exclamation marks. No corporate language.
+- Under 80 words.`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -13,24 +55,8 @@ async function generateReply(comment, name, apiKey, source) {
     },
     body: JSON.stringify({
       model: "claude-sonnet-4-6",
-      max_tokens: 400,
-      messages: [{
-        role: "user",
-        content: `You are helping a therapy practice find new patients through outreach in ${community}.
-
-Someone named "${name}" posted this comment:
-"${comment}"
-
-Write a short, helpful, human-sounding reply (2-4 sentences).
-- Sound like a real person, not a salesperson
-- Acknowledge their specific pain point
-- Mention PracticeSight handles insurance billing and revenue collection for therapy practices
-- End with a soft offer to answer questions or share more info
-- Do NOT use exclamation marks or sound like marketing copy
-- Do NOT start with "I" or "Great question"
-
-Reply only with the comment text, nothing else.`
-      }]
+      max_tokens: 300,
+      messages: [{ role: "user", content: isWarm ? warmPrompt : coldPrompt }]
     })
   });
   const data = await response.json();
@@ -87,6 +113,8 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
   const [generating, setGenerating] = useState(false);
   const [generatedReply, setGeneratedReply] = useState(lead.reply || '');
   const [posted, setPosted] = useState(false);
+  const [variationNum, setVariationNum] = useState(1);
+  const strict = isCommunityStrict(lead.source);
 
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpText, setFollowUpText] = useState('');
@@ -105,9 +133,11 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
       alert('Add your Anthropic API key in Settings first (⚙ top right).');
       return;
     }
+    const nextVariation = (variationNum % 4) + 1;
+    setVariationNum(nextVariation);
     setGenerating(true);
     try {
-      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source);
+      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.stage, nextVariation);
       setGeneratedReply(reply);
       onUpdate(lead.id, { reply });
     } catch (e) {
@@ -212,6 +242,20 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         }}>
           {STAGES.map(s => <option key={s.id} value={s.id}>{s.label} — {s.desc}</option>)}
         </select>
+
+        {/* Community mode indicator */}
+        {lead.source && (
+          <div style={{
+            fontSize: 10, marginBottom: 6, padding: '4px 8px', borderRadius: 6,
+            background: strict ? '#FFF5EB' : '#F0FDF4',
+            color: strict ? '#854F0B' : '#166534',
+            display: 'flex', alignItems: 'center', gap: 4
+          }}>
+            {strict
+              ? '⚠ Strict community — reply will never mention any product'
+              : `✓ ${['hot','testing','feedback'].includes(lead.stage) ? 'Warm lead — reply may mention PracticeSight' : 'Building trust — pure peer support mode'}`}
+          </div>
+        )}
 
         {/* Generate button */}
         <button onClick={handleGenerate} disabled={generating} style={{
