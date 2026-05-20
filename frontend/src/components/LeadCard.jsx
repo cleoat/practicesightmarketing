@@ -73,6 +73,9 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedReply);
     setCopied(true);
+    if (lead.threadUrl) {
+      window.open(lead.threadUrl, '_blank', 'noopener,noreferrer');
+    }
     setTimeout(() => setCopied(false), 2000);
   };
 
