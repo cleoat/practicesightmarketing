@@ -595,7 +595,7 @@ export function CommunitiesPanel({ onSelect }) {
             background: '#fff',
             borderBottom: `1px solid ${COLORS.border}`,
           }}>
-            Showing {filtered.length} targets. Removed unverified Facebook guesses, private r/psychotherapy, banned r/MFT, and banned r/medicalbilling.
+            Showing {filtered.length} verified targets. Built-in links are direct destinations only.
           </div>
 
           {filtered.length === 0 ? (

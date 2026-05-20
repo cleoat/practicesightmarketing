@@ -11,7 +11,7 @@ const TEMPLATES = [
     title: 'Opening question — therapists',
     tag: 'Phase 1 · No product mention',
     when: 'Post this FIRST in any therapist community. No link. No product. Just a question.',
-    communities: 'r/therapists · r/socialwork · r/counseling · r/psychotherapy · Facebook groups',
+    communities: 'r/therapists · r/socialwork · r/counseling',
     body: `For those of you in private practice who do your own insurance billing — how do you actually do your month-end billing review?
 
 Do you have a specific routine, or is it more just knowing your numbers well enough to catch things?
@@ -23,7 +23,7 @@ Genuinely curious what works.`,
     title: 'Opening question — billing managers',
     tag: 'Phase 1 · No product mention',
     when: 'For billing communities. Practical angle, not emotional.',
-    communities: 'r/medicalbilling · SimplePractice Billing Help FB · Insurance Billing for Therapists FB',
+    communities: 'r/SimplePractice · r/privatepractice',
     body: `Does anyone have a clean process for month-end billing review in SimplePractice?
 
 The reports are all there but getting a prioritized action list out of them — what's aging, what's unfiled, what needs follow-up before 90 days — seems to require a lot of manual cross-referencing.
@@ -49,7 +49,7 @@ I keep hearing colleagues in private practice describe this low-grade anxiety ar
     title: 'Share PracticeSight — therapists',
     tag: 'Phase 2 · Has link · After 5+ comments on Phase 1',
     when: 'Only post after Phase 1 got real engagement. Introduces PracticeSight.',
-    communities: 'r/privatepractice · Facebook share post · LinkedIn',
+    communities: 'r/privatepractice · r/SoloPrivatePractice · r/SimplePractice',
     body: `I'm a therapist who built a billing QA tool for SimplePractice.
 
 You export your reports and drag them in. It shows exactly what needs attention — the specific report and row to check.
@@ -67,7 +67,7 @@ Would love to know what it finds in your real data.`,
     title: 'Share PracticeSight — billing managers',
     tag: 'Phase 2 · Has link · Billing audience',
     when: 'For billing communities after adding value in comments.',
-    communities: 'r/medicalbilling · SimplePractice Billing Help FB',
+    communities: 'r/SimplePractice · r/privatepractice',
     body: `I built a browser-based billing review tool specifically for SimplePractice.
 
 You export the standard reports — Outstanding Balances, Unpaid Insurance Appointments, Filed Claims, Client Invoice Aging — and drag them in. It cross-references everything and gives you a prioritized action list. What's aging, what was never filed, what needs attention before it hits 90 days.
