@@ -101,6 +101,30 @@ export const COMMUNITIES = [
     search: 'billing OR insurance OR prior auth OR claim OR revenue',
     tip: 'A focused place to learn billing language and pain points before replying.',
   },
+  {
+    platform: 'facebook', color: '#1864AB', icon: 'f',
+    name: 'Mental Health Billing Support',
+    url: 'https://www.facebook.com/groups/1487216331977931/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Direct Facebook group',
+    frequency: 'Monitor daily',
+    safe: true,
+    rule: 'Billing-support group. Product mentions may fit only when someone asks for tools or workflow help.',
+    search: 'SimplePractice OR claims OR payment posting OR reconciliation OR denials',
+    tip: 'Use a helpful billing-ops tone. Start with process advice; mention PracticeSight only for hot/testing leads.',
+  },
+  {
+    platform: 'facebook', color: '#1864AB', icon: 'f',
+    name: 'Simple Practice Billing',
+    url: 'https://www.facebook.com/groups/2070605980012816/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Direct Facebook group',
+    frequency: 'Monitor daily',
+    safe: true,
+    rule: 'SimplePractice billing group. Tool mentions can fit when directly relevant, but avoid drive-by links.',
+    search: 'unbilled OR stuck claims OR payment report OR ERA OR reconciliation',
+    tip: 'This is one of the most relevant targets. Look for people doing their own billing, not billing vendors.',
+  },
 ];
 
 function loadCustom() {
