@@ -185,8 +185,8 @@ function App() {
             />
 
             {/* Channel pills */}
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-              {['reddit', 'facebook'].map(ch => (
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+              {['reddit', 'facebook', 'x', 'linkedin'].map(ch => (
                 <button
                   key={ch}
                   onClick={() => setInputChannel(ch)}

@@ -38,10 +38,56 @@ Reply only with the comment text, nothing else.`
   return data.content[0].text;
 }
 
+function getPostAction(ch, threadUrl, reply) {
+  if (ch === 'x') {
+    const tweetMatch = threadUrl?.match(/\/status\/(\d+)/);
+    if (tweetMatch) {
+      return {
+        label: '𝕏 Reply on X',
+        sublabel: 'Pre-fills your reply — just click Tweet',
+        color: '#000',
+        action: () => {
+          navigator.clipboard.writeText(reply);
+          const url = `https://twitter.com/intent/tweet?in_reply_to=${tweetMatch[1]}&text=${encodeURIComponent(reply)}`;
+          window.open(url, '_blank', 'noopener,noreferrer');
+        }
+      };
+    }
+    return {
+      label: '𝕏 Post on X',
+      sublabel: 'Opens X with reply pre-filled',
+      color: '#000',
+      action: () => {
+        navigator.clipboard.writeText(reply);
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(reply)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    };
+  }
+
+  const labels = {
+    reddit: { label: '◉ Open Reddit', color: '#E05929' },
+    facebook: { label: 'f Open Facebook', color: '#1877F2' },
+    linkedin: { label: 'in Open LinkedIn', color: '#0A66C2' },
+  };
+  const meta = labels[ch] || { label: '↗ Open Thread', color: COLORS.secondary };
+
+  return {
+    label: meta.label,
+    sublabel: threadUrl ? 'Copies reply + opens thread' : 'Copies reply to clipboard',
+    color: meta.color,
+    action: () => {
+      navigator.clipboard.writeText(reply);
+      if (threadUrl) window.open(threadUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+}
+
 export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiKey }) {
   const [generating, setGenerating] = useState(false);
   const [generatedReply, setGeneratedReply] = useState(lead.reply || '');
-  const [copied, setCopied] = useState(false);
+  const [posted, setPosted] = useState(false);
+
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpText, setFollowUpText] = useState('');
 
@@ -56,7 +102,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
 
   const handleGenerate = async () => {
     if (!apiKey) {
-      alert('Add your Anthropic API key in Settings first.');
+      alert('Add your Anthropic API key in Settings first (⚙ top right).');
       return;
     }
     setGenerating(true);
@@ -70,13 +116,14 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setGenerating(false);
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(generatedReply);
-    setCopied(true);
-    if (lead.threadUrl) {
-      window.open(lead.threadUrl, '_blank', 'noopener,noreferrer');
-    }
-    setTimeout(() => setCopied(false), 2000);
+  const handlePost = () => {
+    const { action } = getPostAction(lead.ch, lead.threadUrl, generatedReply);
+    action();
+    setPosted(true);
+  };
+
+  const handleMarkPosted = () => {
+    onMarkPosted(lead.id);
   };
 
   const handleFollowUp = () => {
@@ -85,6 +132,8 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setFollowUpText('');
     setShowFollowUp(false);
   };
+
+  const postAction = generatedReply ? getPostAction(lead.ch, lead.threadUrl, generatedReply) : null;
 
   return (
     <div style={{
@@ -107,19 +156,15 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{lead.name}</div>
           <div style={{ fontSize: 11, opacity: 0.9, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-            <span>{channel?.icon} {lead.ch}</span>
+            <span>{channel?.icon} {channel?.label || lead.ch}</span>
             {lead.source && (
-              <span style={{
-                background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px'
-              }}>
+              <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px' }}>
                 {lead.source}
               </span>
             )}
             <span>· {lead.date}</span>
             {lead.posted && (
-              <span style={{
-                background: 'rgba(255,255,255,0.25)', borderRadius: 4, padding: '1px 6px', fontWeight: 700
-              }}>
+              <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 4, padding: '1px 6px', fontWeight: 700 }}>
                 ✓ Posted
               </span>
             )}
@@ -153,8 +198,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         {/* Their comment */}
         <div style={{
           background: COLORS.bg, padding: 10, borderRadius: 8, marginBottom: 10,
-          fontSize: 12, color: '#555', lineHeight: 1.5, fontStyle: 'italic',
-          position: 'relative'
+          fontSize: 12, color: '#555', lineHeight: 1.5, fontStyle: 'italic'
         }}>
           "{lead.comment.slice(0, 150)}{lead.comment.length > 150 ? '...' : ''}"
         </div>
@@ -169,7 +213,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
           {STAGES.map(s => <option key={s.id} value={s.id}>{s.label} — {s.desc}</option>)}
         </select>
 
-        {/* Generate reply button */}
+        {/* Generate button */}
         <button onClick={handleGenerate} disabled={generating} style={{
           width: '100%', padding: 10, marginBottom: 8,
           background: generating ? '#9CA3AF' : COLORS.primary,
@@ -177,47 +221,63 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
           cursor: generating ? 'not-allowed' : 'pointer',
           fontSize: 13, fontWeight: 700, fontFamily: 'inherit'
         }}>
-          {generating ? '⏳ Generating...' : '✨ Generate Reply'}
+          {generating ? '⏳ Generating...' : generatedReply ? '↺ Re-generate' : '✨ Generate Reply'}
         </button>
 
-        {/* Generated reply */}
+        {/* Generated reply + post actions */}
         {generatedReply && (
           <div style={{ marginBottom: 8 }}>
-            <div style={{
-              background: '#F0FDF4', border: '1px solid #B8E5C8',
-              borderRadius: 8, padding: 10, fontSize: 12,
-              lineHeight: 1.6, color: '#166534', marginBottom: 6,
-              userSelect: 'all'
-            }}>
+            {/* Reply text — click to copy */}
+            <div
+              onClick={() => navigator.clipboard.writeText(generatedReply)}
+              title="Click to copy"
+              style={{
+                background: '#F0FDF4', border: '1px solid #B8E5C8',
+                borderRadius: 8, padding: 10, fontSize: 12,
+                lineHeight: 1.6, color: '#166534', marginBottom: 8,
+                cursor: 'copy', userSelect: 'all'
+              }}
+            >
               {generatedReply}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-              <button onClick={handleCopy} style={{
-                padding: 8,
-                background: copied ? '#166534' : COLORS.success,
-                color: '#fff', border: 'none', borderRadius: 6,
-                cursor: 'pointer', fontSize: 12, fontWeight: 700
-              }}>
-                {copied ? '✓ Copied!' : '📋 Copy Reply'}
+
+            {/* Platform post button */}
+            {postAction && (
+              <button
+                onClick={handlePost}
+                style={{
+                  width: '100%', padding: '10px 12px', marginBottom: 6,
+                  background: postAction.color,
+                  color: '#fff', border: 'none', borderRadius: 8,
+                  cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                  fontFamily: 'inherit',
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
+                }}
+              >
+                <span>{postAction.label}</span>
+                <span style={{ fontSize: 10, fontWeight: 400, opacity: 0.8 }}>{postAction.sublabel}</span>
               </button>
-              {!lead.posted ? (
-                <button onClick={() => onMarkPosted(lead.id)} style={{
-                  padding: 8,
-                  background: '#fff', color: COLORS.success,
+            )}
+
+            {/* Mark as posted */}
+            {!lead.posted ? (
+              <button
+                onClick={handleMarkPosted}
+                style={{
+                  width: '100%', padding: 8,
+                  background: posted ? COLORS.success + '22' : '#fff',
+                  color: COLORS.success,
                   border: `1px solid ${COLORS.success}`, borderRadius: 6,
                   cursor: 'pointer', fontSize: 12, fontWeight: 600
-                }}>
-                  ✓ Mark as Posted
-                </button>
-              ) : (
-                <div style={{
-                  padding: 8, textAlign: 'center', fontSize: 12,
-                  color: COLORS.success, fontWeight: 600
-                }}>
-                  ✓ Posted
-                </div>
-              )}
-            </div>
+                }}
+              >
+                {posted ? '✓ Mark as Posted (confirm)' : '✓ Mark as Posted'}
+              </button>
+            ) : (
+              <div style={{ textAlign: 'center', fontSize: 12, color: COLORS.success, fontWeight: 600, padding: 4 }}>
+                ✓ Posted
+              </div>
+            )}
           </div>
         )}
 

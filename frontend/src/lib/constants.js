@@ -14,6 +14,7 @@ export const CHANNELS = {
   reddit: { icon: '◉', label: 'Reddit', color: '#E05929' },
   facebook: { icon: 'f', label: 'Facebook', color: '#1877F2' },
   linkedin: { icon: 'in', label: 'LinkedIn', color: '#0A66C2' },
+  x: { icon: '𝕏', label: 'X / Twitter', color: '#000000' },
   whatsapp: { icon: 'W', label: 'WhatsApp', color: '#25D366' },
   dm: { icon: '→', label: 'Direct Message', color: '#7C3AED' }
 };

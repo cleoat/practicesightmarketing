@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const leadSchema = z.object({
   id: z.number().optional(),
   name: z.string().min(1, 'Name required').max(100),
-  ch: z.enum(['reddit', 'facebook', 'linkedin', 'whatsapp', 'dm']),
+  ch: z.enum(['reddit', 'facebook', 'linkedin', 'x', 'whatsapp', 'dm']),
   comment: z.string().min(5, 'Comment too short').max(5000),
   stage: z.enum(['saw_it', 'engaged', 'warm', 'hot', 'testing', 'feedback', 'not_fit']),
   source: z.string().optional().default(''),
