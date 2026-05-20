@@ -8,39 +8,63 @@ const TEMPLATES = [
   // ── PHASE 1 — NO LINK, NO PRODUCT MENTION ────────────────────────
   {
     id: 1, phase: 1,
-    title: 'Opening question — therapists',
+    title: 'Month-end review question',
     tag: 'Phase 1 · No product mention',
-    when: 'Post this FIRST in any therapist community. No link. No product. Just a question.',
-    communities: 'r/therapists · r/socialwork · r/counseling',
+    when: 'Post FIRST — pure question, zero product mention. Great opener in any therapist community.',
+    communities: 'r/therapists · r/socialwork · r/counseling · Facebook groups',
     body: `For those of you in private practice who do your own insurance billing — how do you actually do your month-end billing review?
 
 Do you have a specific routine, or is it more just knowing your numbers well enough to catch things?
 
-Genuinely curious what works.`,
+Genuinely curious what works for people.`,
   },
   {
     id: 2, phase: 1,
-    title: 'Opening question — billing managers',
+    title: 'Lost revenue / unbilled sessions',
     tag: 'Phase 1 · No product mention',
-    when: 'For billing communities. Practical angle, not emotional.',
-    communities: 'r/SimplePractice · r/privatepractice',
-    body: `Does anyone have a clean process for month-end billing review in SimplePractice?
+    when: 'Pain-point angle. Works well in private practice communities.',
+    communities: 'r/privatepractice · Therapists in Private Practice FB · Therapist Entrepreneurs FB',
+    body: `Anyone in private practice ever go back and find sessions that were never billed?
 
-The reports are all there but getting a prioritized action list out of them — what's aging, what's unfiled, what needs follow-up before 90 days — seems to require a lot of manual cross-referencing.
+I've heard from a few colleagues that it happens more than people admit — an appointment slips through, a claim never gets filed, and it just sits there aging out.
 
-Is that your experience or have you found a cleaner way?`,
+Curious whether you have a process to catch those or if it's more "hope for the best."`,
   },
   {
     id: 3, phase: 1,
-    title: 'Opening question — anxiety angle',
+    title: 'The billing anxiety post',
     tag: 'Phase 1 · No product mention',
-    when: 'Emotional angle. Works well in large therapist communities.',
-    communities: 'r/therapists · Facebook private practice groups',
+    when: 'Emotional angle. High engagement in large therapist groups.',
+    communities: 'r/therapists · Mental Health Private Practice Owners FB · Facebook groups',
     body: `Do you actually know if your insurance billing is clean right now?
 
-Or are you kind of just hoping everything is okay?
+Or are you kind of just hoping it is?
 
-I keep hearing colleagues in private practice describe this low-grade anxiety around it — not knowing if a claim is stuck, something went unbilled, a balance is aging somewhere. Curious if that's common or if most people have a real system.`,
+I keep hearing colleagues describe this low-grade anxiety around it — not knowing if a claim is stuck, something went unbilled, a balance is quietly aging. Curious whether that's common or if most people have a real system that gives them confidence.`,
+  },
+  {
+    id: 4, phase: 1,
+    title: 'SimplePractice reports question',
+    tag: 'Phase 1 · No product mention',
+    when: 'Highly specific — targets SimplePractice users directly.',
+    communities: 'SimplePractice Users Community FB · r/privatepractice',
+    body: `For those using SimplePractice and doing your own insurance billing — which reports do you actually use for your billing review?
+
+I'm finding the data is all in there somewhere, but getting a clear action list out of it (what's aging, what's unfiled, what needs follow-up before 90 days) requires a lot of manual cross-referencing.
+
+Is that your experience or have you found a better workflow?`,
+  },
+  {
+    id: 5, phase: 1,
+    title: 'Claim denial frustration',
+    tag: 'Phase 1 · No product mention',
+    when: 'Works well when claim denials are being discussed in the thread.',
+    communities: 'r/therapists · Insurance Billing for Therapists FB · r/medicalbilling',
+    body: `Is anyone else getting more claim denials this year or is it just me?
+
+It feels like every few weeks there's a new reason they kick things back. I've gotten better at catching them but I'm still not confident I'm finding every one before it ages out.
+
+What does your denial follow-up process look like?`,
   },
 
   // ── PHASE 2 — AFTER ENGAGEMENT, WITH LINK ─────────────────────────
@@ -158,29 +182,40 @@ const PHASE_COLORS = {
   0: { bg: '#F5F4F0', color: '#555', label: 'Reply scripts' },
 };
 
+const REMIX_ANGLES = [
+  'Lead with a personal observation or experience',
+  'Lead with a direct question to the reader',
+  'Lead with a specific number or data point ("$970 sitting unbilled", "3 out of 5 colleagues...")',
+];
+
 async function callRemix(body, community, apiKey, preferredModel) {
   const isPhase2 = body.includes('practicesight.pages.dev');
   const communityRule = getCommunityRule(community, null, COMMUNITIES);
   const target = formatCommunityForPrompt(communityRule);
   const productInstruction = isPhase2
-    ? 'Keep practicesight.pages.dev in the post naturally because this target is marked can-mention'
-    : 'NO product mention, NO links — pure question or peer support only';
+    ? 'Keep practicesight.pages.dev in the post naturally'
+    : 'NO product mention, NO links, NO company names — pure question or peer observation only';
 
-  const prompt = `You are a licensed therapist in private practice who built PracticeSight — a free billing QA tool for SimplePractice users.
+  const prompt = `You are a therapist in private practice who does their own SimplePractice billing.
 
 ORIGINAL POST:
 "${body}"
 
 TARGET COMMUNITY: ${target}
-CHANNEL RULE: ${communityRule.strict ? 'No product names, links, software, companies, services, or promotional language.' : 'Product mention is allowed only when it directly fits the thread.'}
-CHANNEL TONE: ${communityToneGuidance(communityRule)}
+RULE: ${productInstruction}
+TONE: ${communityToneGuidance(communityRule)}
 
-Generate 3 fresh remixes. Each must:
-- Start with a completely different opening word/sentence
-- Same core message, different angle
-- ${productInstruction}
-- Under 90 words each
-- Sound like a real therapist, not a marketer
+Write 3 remixes. Each must take a different angle:
+- Remix 1: ${REMIX_ANGLES[0]}
+- Remix 2: ${REMIX_ANGLES[1]}
+- Remix 3: ${REMIX_ANGLES[2]}
+
+Each remix must:
+- Open with a completely different first sentence
+- Explore the same billing pain point from that angle
+- Sound like a real person typing on their phone, not polished copy
+- Under 80 words
+- No exclamation marks
 
 Format exactly:
 REMIX 1:

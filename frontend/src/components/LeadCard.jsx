@@ -2,14 +2,78 @@ import React, { useState } from 'react';
 import { STAGES, CHANNELS, COLORS } from '../lib/constants';
 import { chatCompletion } from '../lib/openrouter';
 import { communityToneGuidance, formatCommunityForPrompt, getCommunityRule } from '../lib/communityRules';
+import { analyzeLeadComment } from '../lib/leadAnalysis';
 import { COMMUNITIES } from './CommunitiesPanel';
 
-async function generateReply(comment, name, apiKey, source, channel, stage, variationNum, preferredModel) {
+const LEAD_TYPE_META = {
+  billing_vendor: {
+    icon: '🏢',
+    label: 'Billing company / vendor',
+    color: '#DC2626',
+    bg: '#FEF2F2',
+    border: '#FECACA',
+    action: 'Generate Referral Ask',
+  },
+  outsourced_billing: {
+    icon: '🔄',
+    label: 'Billing outsourced',
+    color: '#D97706',
+    bg: '#FFFBEB',
+    border: '#FDE68A',
+    action: 'Generate Referral Ask',
+  },
+  potential_practice: {
+    icon: '👤',
+    label: 'Private practice therapist',
+    color: '#059669',
+    bg: '#F0FDF4',
+    border: '#B8E5C8',
+    action: null,
+  },
+};
+
+async function generateReply(comment, name, apiKey, source, channel, stage, leadType, variationNum, preferredModel) {
   const communityRule = getCommunityRule(source, channel, COMMUNITIES);
   const platform = formatCommunityForPrompt(communityRule);
   const toneGuidance = communityToneGuidance(communityRule);
   const isWarm = communityRule.canMentionProduct && ['hot', 'testing', 'feedback'].includes(stage);
   const variation = variationNum || 1;
+
+  // Vendor / billing company — ask for a referral, don't pitch
+  if (leadType === 'billing_vendor') {
+    const referralPrompt = `You are a therapist who built PracticeSight, a free billing QA tool for SimplePractice.
+
+This person appears to be a billing company or billing service provider, not a therapist themselves. They wrote:
+"${comment}"
+
+Write a 1-2 sentence friendly reply that:
+- Briefly acknowledges what they do
+- Naturally asks if they work with any therapists who use SimplePractice and do their own billing — those are exactly who PracticeSight is built for
+- Zero pressure, genuine curiosity
+- Under 35 words
+- No exclamation marks`;
+
+    const result = await chatCompletion({ apiKey, maxTokens: 150, preferredModel, messages: [{ role: 'user', content: referralPrompt }] });
+    return result.text;
+  }
+
+  // Outsourced billing — ask for colleague referral
+  if (leadType === 'outsourced_billing') {
+    const outsourcedPrompt = `You are a therapist who built PracticeSight, a free billing QA tool for SimplePractice.
+
+This person has their billing handled for them and wrote:
+"${comment}"
+
+Write a 1-2 sentence reply that:
+- Acknowledges that this tool probably isn't for them directly
+- Asks if they know any colleagues who do their own billing in SimplePractice — those are exactly who it's for
+- Friendly, zero pressure
+- Under 35 words`;
+
+    const result = await chatCompletion({ apiKey, maxTokens: 150, preferredModel, messages: [{ role: 'user', content: outsourcedPrompt }] });
+    return result.text;
+  }
+
   const ruleGuidance = communityRule.strict
     ? 'This community is no-promotion. Do not mention PracticeSight, apps, tools, software, companies, services, links, or DMs.'
     : 'Product mentions are only allowed for hot/testing/feedback leads. For earlier stages, keep it pure peer support.';
@@ -22,43 +86,39 @@ Channel tone: ${toneGuidance}
 ${name} posted this:
 "${comment}"
 
-Write reply variation #${variation} of 4. Each variation uses a different opening and angle.
+Write reply variation #${variation} of 4. Each uses a different opening and angle.
 
 The reply should:
 - Empathize with their exact frustration using their own words
-- Share ONE specific, practical tip from personal billing experience (e.g. batching ERA enrollment, following up on aging claims after 30 days, calling payer reps directly, checking claim status in the portal before calling)
-- End with a genuine question about their specific situation to start a real conversation
-- Sound exactly like a fellow therapist — NOT a company, marketer, or vendor
-- NEVER mention any product, app, company, software, or service by name
+- Share ONE specific practical tip from personal billing experience (e.g. ERA enrollment batching, calling payer reps directly, aging claim follow-up after 30 days, checking claim status before calling)
+- End with a genuine question about their specific situation
+- Sound exactly like a fellow therapist — not a company, marketer, or vendor
+- NEVER mention any product, app, company, or service by name
 - No exclamation marks. No "I hope this helps." No generic phrases.
-- Under 80 words.
-
-This is peer support, not marketing. Zero promotion.`;
+- Under 80 words.`;
 
   const warmPrompt = `You are a therapist in private practice who personally solved their billing headaches, replying in ${platform}.
 
-Community rule: Product mentions are allowed here because the selected community is marked can-mention and this lead is ${stage}.
+Community rule: Product mentions are allowed here — this community is marked can-mention and the lead is ${stage}.
 Channel tone: ${toneGuidance}
 
-${name} is actively looking for a billing solution and wrote:
+${name} wrote:
 "${comment}"
 
-Write a warm, personal reply of 2-3 sentences that:
+Write a warm personal reply of 2-3 sentences that:
 - Acknowledges their specific frustration
 - Shares that you personally found PracticeSight which handles insurance billing and revenue recovery for therapy practices — frame it as a personal discovery ("I found something that actually fixed this for me")
 - Invites them to ask you more or DM
-- Sounds like a real person sharing their experience, NOT an ad
+- Sounds like a real person sharing their experience, not an ad
 - No exclamation marks. No corporate language.
 - Under 80 words.`;
 
-  const prompt = isWarm ? warmPrompt : coldPrompt;
   const result = await chatCompletion({
     apiKey,
     maxTokens: 300,
     preferredModel,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: 'user', content: isWarm ? warmPrompt : coldPrompt }],
   });
-
   return result.text;
 }
 
@@ -115,6 +175,11 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
   const communityRule = getCommunityRule(lead.source, lead.ch, COMMUNITIES);
   const strict = communityRule.strict;
 
+  // Always run live analysis — catches old leads that predate leadType storage
+  const liveAnalysis = analyzeLeadComment(lead.comment);
+  const leadType = liveAnalysis.leadType;
+  const typeMeta = LEAD_TYPE_META[leadType] || LEAD_TYPE_META.potential_practice;
+
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpText, setFollowUpText] = useState('');
 
@@ -136,7 +201,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setVariationNum(nextVariation);
     setGenerating(true);
     try {
-      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.ch, lead.stage, nextVariation, preferredModel);
+      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.ch, lead.stage, leadType, nextVariation, preferredModel);
       setGeneratedReply(reply);
       onUpdate(lead.id, { reply });
     } catch (e) {
@@ -243,47 +308,55 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
           {STAGES.map(s => <option key={s.id} value={s.id}>{s.label} — {s.desc}</option>)}
         </select>
 
-        {/* Community mode indicator */}
-        {(lead.source || lead.ch === 'reddit') && (
+        {/* Lead type + analysis badge — always live */}
+        <div style={{
+          marginBottom: 10, padding: '9px 12px', borderRadius: 8,
+          border: `1px solid ${typeMeta.border}`,
+          background: typeMeta.bg,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: liveAnalysis.reason ? 3 : 0 }}>
+            <span style={{ fontSize: 13 }}>{typeMeta.icon}</span>
+            <span style={{ fontSize: 12, fontWeight: 800, color: typeMeta.color }}>{typeMeta.label}</span>
+            {leadType !== 'potential_practice' && (
+              <span style={{
+                fontSize: 10, padding: '2px 7px', borderRadius: 10, fontWeight: 700,
+                background: typeMeta.color, color: '#fff', marginLeft: 2
+              }}>not a direct fit</span>
+            )}
+          </div>
+          {liveAnalysis.reason && (
+            <div style={{ fontSize: 11, color: '#555', lineHeight: 1.4 }}>{liveAnalysis.reason}</div>
+          )}
+        </div>
+
+        {/* Community posting rule */}
+        {(lead.source || lead.ch === 'reddit') && leadType === 'potential_practice' && (
           <div style={{
-            fontSize: 13, marginBottom: 10, padding: '8px 10px', borderRadius: 8,
+            fontSize: 12, marginBottom: 10, padding: '6px 10px', borderRadius: 8,
             background: strict ? '#FFF5EB' : '#F0FDF4',
             color: strict ? '#854F0B' : '#166534',
-            display: 'flex', alignItems: 'center', gap: 4
           }}>
             {strict
-              ? `${communityRule.assumed ? 'Unknown Reddit source' : 'Strict community'} — reply will never mention any product`
-              : `${['hot','testing','feedback'].includes(lead.stage) ? 'Warm lead — reply may mention PracticeSight' : 'Building trust — pure peer support mode'}`}
+              ? `⚠ ${communityRule.assumed ? 'Unknown Reddit community' : communityRule.source} — reply will never mention any product`
+              : `✓ ${['hot','testing','feedback'].includes(lead.stage) ? 'Warm lead — reply may mention PracticeSight' : 'Building trust — peer support mode'}`}
           </div>
         )}
 
-        {(lead.responseType || lead.analysisReason) && (
-          <div style={{
-            fontSize: 13,
-            marginBottom: 10,
-            padding: '9px 10px',
-            borderRadius: 8,
-            border: `1px solid ${lead.stage === 'not_fit' ? '#FECACA' : COLORS.border}`,
-            background: lead.stage === 'not_fit' ? '#FEF2F2' : '#F8FAFC',
-            color: COLORS.text,
-            lineHeight: 1.45,
-          }}>
-            <div style={{ fontWeight: 900, color: lead.stage === 'not_fit' ? COLORS.error : COLORS.secondary, marginBottom: 3 }}>
-              {lead.responseType || 'Lead analysis'}
-            </div>
-            <div>{lead.analysisReason || lead.intent}</div>
-          </div>
-        )}
-
-        {/* Generate button */}
+        {/* Generate button — label changes based on lead type */}
         <button onClick={handleGenerate} disabled={generating} style={{
           width: '100%', padding: 13, marginBottom: 10,
-          background: generating ? '#9CA3AF' : COLORS.primary,
+          background: generating ? '#9CA3AF' : leadType === 'billing_vendor' ? '#DC2626' : leadType === 'outsourced_billing' ? '#D97706' : COLORS.primary,
           color: '#fff', border: 'none', borderRadius: 8,
           cursor: generating ? 'not-allowed' : 'pointer',
           fontSize: 15, fontWeight: 900, fontFamily: 'inherit'
         }}>
-          {generating ? '⏳ Generating...' : generatedReply ? '↺ Re-generate' : '✨ Generate Reply'}
+          {generating
+            ? '⏳ Generating...'
+            : generatedReply
+              ? `↺ Re-generate${typeMeta.action ? ' Referral Ask' : ''}`
+              : typeMeta.action
+                ? `✉ ${typeMeta.action}`
+                : '✨ Generate Reply'}
         </button>
 
         {/* Generated reply + post actions */}
