@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import MetricsBar from './components/MetricsBar';
 import PipelineView from './components/PipelineView';
 import SettingsPanel from './components/SettingsPanel';
+import CommunitiesPanel from './components/CommunitiesPanel';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
   getRedditStats, incrementPostsToday, resetDailyStats
 } from './lib/storage';
-import { COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES } from './lib/constants';
+import { COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES, CHANNELS } from './lib/constants';
 import { validateInput, leadSchema } from './lib/validators';
 
 function App() {
@@ -15,6 +16,9 @@ function App() {
   const [settings, setSettingsState] = useState({});
   const [redditStats, setRedditStatsState] = useState({});
   const [inputName, setInputName] = useState('');
+  const [inputSource, setInputSource] = useState('');
+  const [inputChannel, setInputChannel] = useState('reddit');
+  const [inputThreadUrl, setInputThreadUrl] = useState('');
   const [inputComment, setInputComment] = useState('');
   const [msg, setMsg] = useState('');
   const [filter, setFilter] = useState('all');
@@ -39,6 +43,11 @@ function App() {
     if (lower.includes('headway') || lower.includes('alma')) return 'not_fit';
     if (lower.includes('?')) return 'engaged';
     return 'saw_it';
+  }
+
+  function handleCommunitySelect(name, channel) {
+    setInputSource(name);
+    setInputChannel(channel);
   }
 
   function handleAddLead() {
@@ -66,9 +75,20 @@ function App() {
     }
 
     const stage = detectStage(comment);
-    setLeadsState([{ ...DEFAULT_LEAD, name, comment, stage, id: Date.now() }, ...leads]);
+    const newLead = {
+      ...DEFAULT_LEAD,
+      name,
+      comment,
+      stage,
+      ch: inputChannel,
+      source: inputSource.trim(),
+      threadUrl: inputThreadUrl.trim(),
+      id: Date.now()
+    };
+    setLeadsState([newLead, ...leads]);
     setInputName('');
     setInputComment('');
+    setInputThreadUrl('');
     setMsg('✓ Added');
     setTimeout(() => setMsg(''), 1500);
   }
@@ -112,6 +132,12 @@ function App() {
     );
   }
 
+  const inputStyle = {
+    width: '100%', padding: '9px 12px', fontSize: 13,
+    border: `1px solid ${COLORS.border}`, borderRadius: 8,
+    boxSizing: 'border-box', fontFamily: 'inherit'
+  };
+
   return (
     <div style={{
       fontFamily: "'DM Sans', system-ui, sans-serif",
@@ -127,7 +153,7 @@ function App() {
               PracticeSight Outreach
             </div>
             <div style={{ fontSize: 12, color: COLORS.muted }}>
-              Outreach CRM · AI-powered reply generation · copy & paste workflow
+              Find billing-frustrated therapists → generate reply → copy & paste → track
             </div>
           </div>
           <SettingsPanel settings={settings} onUpdate={handleUpdateSetting} />
@@ -136,42 +162,84 @@ function App() {
         {/* Metrics */}
         <MetricsBar leads={leads} redditStats={redditStats} />
 
+        {/* Communities */}
+        <CommunitiesPanel onSelect={handleCommunitySelect} />
+
         {/* Add lead */}
         <div style={{
           background: '#fff', border: `1px solid ${COLORS.border}`,
           borderRadius: 12, padding: 16, marginBottom: 20
         }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.muted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+            Add a lead
+          </div>
+
+          {/* Row 1: Name + Channel + Source */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 8, marginBottom: 8 }}>
+            <input
+              type="text"
+              placeholder="Name or handle (e.g. u/Visual-Few)"
+              value={inputName}
+              onChange={(e) => setInputName(e.target.value)}
+              style={inputStyle}
+            />
+
+            {/* Channel pills */}
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {['reddit', 'facebook'].map(ch => (
+                <button
+                  key={ch}
+                  onClick={() => setInputChannel(ch)}
+                  style={{
+                    padding: '7px 12px', fontSize: 12, fontWeight: 600,
+                    border: inputChannel === ch ? `2px solid ${CHANNELS[ch].color}` : `1px solid ${COLORS.border}`,
+                    background: inputChannel === ch ? CHANNELS[ch].color + '15' : '#fff',
+                    color: inputChannel === ch ? CHANNELS[ch].color : COLORS.muted,
+                    borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {CHANNELS[ch].icon} {CHANNELS[ch].label}
+                </button>
+              ))}
+            </div>
+
+            <input
+              type="text"
+              placeholder="Source (e.g. r/therapists)"
+              value={inputSource}
+              onChange={(e) => setInputSource(e.target.value)}
+              style={{ ...inputStyle, color: inputSource ? COLORS.accent : undefined }}
+            />
+          </div>
+
+          {/* Row 2: Thread URL */}
           <input
             type="text"
-            placeholder="Name or handle (e.g. u/Visual-Few)"
-            value={inputName}
-            onChange={(e) => setInputName(e.target.value)}
-            style={{
-              width: '100%', padding: '10px 12px', fontSize: 13,
-              border: `1px solid ${COLORS.border}`, borderRadius: 8,
-              marginBottom: 8, boxSizing: 'border-box', fontFamily: 'inherit'
-            }}
+            placeholder="Thread URL (optional — paste link to their post so you can find it later)"
+            value={inputThreadUrl}
+            onChange={(e) => setInputThreadUrl(e.target.value)}
+            style={{ ...inputStyle, marginBottom: 8, fontSize: 12, color: COLORS.secondary }}
           />
+
+          {/* Row 3: Comment */}
           <textarea
             placeholder="Paste their comment here..."
             value={inputComment}
             onChange={(e) => setInputComment(e.target.value)}
             onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && handleAddLead()}
             rows={3}
-            style={{
-              width: '100%', padding: '10px 12px', fontSize: 13,
-              border: `1px solid ${COLORS.border}`, borderRadius: 8,
-              marginBottom: 10, boxSizing: 'border-box',
-              fontFamily: 'inherit', resize: 'vertical'
-            }}
+            style={{ ...inputStyle, marginBottom: 10, resize: 'vertical' }}
           />
+
           <button onClick={handleAddLead} style={{
             width: '100%', fontSize: 14, fontWeight: 600, padding: 12,
             background: COLORS.primary, color: '#fff', border: 'none',
             borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit'
           }}>
-            + Add lead (auto-detects stage)
+            + Add lead (Ctrl+Enter)
           </button>
+
           {msg && (
             <div style={{
               fontSize: 12, marginTop: 10, padding: '8px 12px', borderRadius: 8,

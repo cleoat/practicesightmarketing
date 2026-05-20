@@ -6,6 +6,8 @@ export const leadSchema = z.object({
   ch: z.enum(['reddit', 'facebook', 'linkedin', 'whatsapp', 'dm']),
   comment: z.string().min(5, 'Comment too short').max(5000),
   stage: z.enum(['saw_it', 'engaged', 'warm', 'hot', 'testing', 'feedback', 'not_fit']),
+  source: z.string().optional().default(''),
+  threadUrl: z.string().optional().default(''),
   reply: z.string().optional().default(''),
   followUps: z.array(z.string()).optional().default([]),
   date: z.string().optional(),

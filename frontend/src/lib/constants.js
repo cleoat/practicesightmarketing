@@ -51,6 +51,8 @@ export const STORAGE_KEYS = {
 export const DEFAULT_LEAD = {
   name: '',
   ch: 'reddit',
+  source: '',
+  threadUrl: '',
   comment: '',
   stage: 'saw_it',
   reply: '',
