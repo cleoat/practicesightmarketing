@@ -91,6 +91,18 @@ export const COMMUNITIES = [
   },
   {
     platform: 'reddit', color: '#D9480F', icon: 'R',
+    name: 'r/TherapistsInPractice',
+    url: 'https://www.reddit.com/r/TherapistsInPractice/',
+    verifiedAt: VERIFIED_AT,
+    size: 'Verified subreddit',
+    frequency: 'Monitor weekly',
+    safe: true,
+    rule: 'Therapists in practice community. Tool mentions may fit only after clear billing pain and context.',
+    search: 'billing OR insurance OR LCSW private practice OR claims OR SimplePractice',
+    tip: 'Good fit for LCSW/private-practice conversations. Look for clinicians doing their own billing.',
+  },
+  {
+    platform: 'reddit', color: '#D9480F', icon: 'R',
     name: 'r/ABA',
     url: 'https://www.reddit.com/r/ABA/',
     verifiedAt: VERIFIED_AT,
