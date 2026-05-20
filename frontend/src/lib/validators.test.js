@@ -1,10 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-  leadSchema,
-  settingsSchema,
-  validateInput,
-  sanitizeInput
-} from './validators';
+import { leadSchema, validateInput, sanitizeInput } from './validators';
 
 describe('leadSchema', () => {
   const valid = {
@@ -56,31 +51,15 @@ describe('leadSchema', () => {
     const result = validateInput(leadSchema, { ...valid, ch: 'tiktok' });
     expect(result.valid).toBe(false);
   });
-});
 
-describe('settingsSchema', () => {
-  const valid = {
-    maxPostsPerDay: 3,
-    minSecondsBetweenPosts: 2,
-    minAccountAgeDays: 7,
-    rateLimit: true,
-    backendUrl: ''
-  };
-
-  it('accepts valid settings', () => {
-    expect(validateInput(settingsSchema, valid).valid).toBe(true);
+  it('accepts followUps array', () => {
+    const result = validateInput(leadSchema, { ...valid, followUps: ['Their reply text'] });
+    expect(result.valid).toBe(true);
   });
 
-  it('rejects maxPostsPerDay above 10', () => {
-    expect(validateInput(settingsSchema, { ...valid, maxPostsPerDay: 11 }).valid).toBe(false);
-  });
-
-  it('rejects maxPostsPerDay below 1', () => {
-    expect(validateInput(settingsSchema, { ...valid, maxPostsPerDay: 0 }).valid).toBe(false);
-  });
-
-  it('accepts empty backendUrl', () => {
-    expect(validateInput(settingsSchema, { ...valid, backendUrl: '' }).valid).toBe(true);
+  it('defaults followUps to empty array', () => {
+    const result = validateInput(leadSchema, valid);
+    expect(result.data.followUps).toEqual([]);
   });
 });
 

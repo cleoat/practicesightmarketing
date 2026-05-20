@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { STAGES, COLORS, CHANNELS, GUARDRAILS, DEFAULT_LEAD, SPAM_KEYWORDS } from './constants';
+import { STAGES, COLORS, CHANNELS, DEFAULT_LEAD, SPAM_KEYWORDS } from './constants';
 
 describe('STAGES', () => {
   it('has 7 stages', () => {
@@ -47,23 +47,9 @@ describe('CHANNELS', () => {
   });
 });
 
-describe('GUARDRAILS defaults', () => {
-  it('maxPostsPerDay is 3', () => {
-    expect(GUARDRAILS.maxPostsPerDay).toBe(3);
-  });
-
-  it('minAccountAgeDays is 7', () => {
-    expect(GUARDRAILS.minAccountAgeDays).toBe(7);
-  });
-
-  it('relevanceThreshold is 0.6', () => {
-    expect(GUARDRAILS.relevanceThreshold).toBe(0.6);
-  });
-});
-
 describe('DEFAULT_LEAD', () => {
   it('has all required fields', () => {
-    ['name', 'ch', 'comment', 'stage', 'reply', 'posted', 'postUrl'].forEach(key => {
+    ['name', 'ch', 'comment', 'stage', 'reply', 'followUps', 'posted', 'postUrl'].forEach(key => {
       expect(DEFAULT_LEAD).toHaveProperty(key);
     });
   });
@@ -74,6 +60,11 @@ describe('DEFAULT_LEAD', () => {
 
   it('defaults to saw_it stage', () => {
     expect(DEFAULT_LEAD.stage).toBe('saw_it');
+  });
+
+  it('followUps defaults to empty array', () => {
+    expect(Array.isArray(DEFAULT_LEAD.followUps)).toBe(true);
+    expect(DEFAULT_LEAD.followUps).toHaveLength(0);
   });
 });
 

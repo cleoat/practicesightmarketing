@@ -41,8 +41,3 @@ jobs:
       - name: Frontend build
         run: npm run build
         working-directory: frontend
-
-      - name: 'notify vercel'
-        uses: 'vercel/repository-dispatch/actions/status@v1'
-        with:
-          name: Vercel - practicesightmarketing: lint

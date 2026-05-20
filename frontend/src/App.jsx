@@ -5,7 +5,7 @@ import SettingsPanel from './components/SettingsPanel';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
-  getRedditStats, resetDailyStats
+  getRedditStats, incrementPostsToday, resetDailyStats
 } from './lib/storage';
 import { COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES } from './lib/constants';
 import { validateInput, leadSchema } from './lib/validators';
@@ -23,8 +23,7 @@ function App() {
   useEffect(() => {
     setLeadsState(getLeads());
     setSettingsState(getSettings());
-    resetDailyStats();
-    setRedditStatsState(getRedditStats());
+    setRedditStatsState(resetDailyStats());
     setLoaded(true);
   }, []);
 
@@ -34,9 +33,9 @@ function App() {
   function detectStage(comment) {
     const lower = comment.toLowerCase();
     if (lower.includes('unbilled') || lower.includes('stuck') || lower.includes('aging') || lower.includes('billing')) return 'warm';
-    if (lower.includes('how') || lower.includes('try')) return 'hot';
-    if (lower.includes('tested') || lower.includes('used')) return 'testing';
-    if (lower.includes('found') || lower.includes('worked')) return 'feedback';
+    if (/want to try|how do i|how much|sign up|get started|interested in/.test(lower)) return 'hot';
+    if (lower.includes('been using') || lower.includes('tried it') || lower.includes('tested')) return 'testing';
+    if (lower.includes('it worked') || lower.includes('solved') || lower.includes('feedback')) return 'feedback';
     if (lower.includes('headway') || lower.includes('alma')) return 'not_fit';
     if (lower.includes('?')) return 'engaged';
     return 'saw_it';
@@ -82,11 +81,19 @@ function App() {
     setLeadsState(leads.filter(l => l.id !== id));
   }
 
-  function handleReply(id, comment) {
-    if (!comment.trim()) return;
-    handleUpdateLead(id, { reply: comment });
+  function handleReply(id, followUpText) {
+    if (!followUpText.trim()) return;
+    const lead = leads.find(l => l.id === id);
+    const followUps = [...(lead?.followUps || []), followUpText.trim()];
+    handleUpdateLead(id, { followUps });
     setMsg('✓ Follow-up logged');
     setTimeout(() => setMsg(''), 1500);
+  }
+
+  function handleMarkPosted(id) {
+    handleUpdateLead(id, { posted: true });
+    const newStats = incrementPostsToday();
+    setRedditStatsState({ ...newStats });
   }
 
   function handleUpdateSetting(key, value) {
@@ -214,6 +221,7 @@ function App() {
           onUpdate={handleUpdateLead}
           onDelete={handleDeleteLead}
           onReply={handleReply}
+          onMarkPosted={handleMarkPosted}
           filter={filter}
           apiKey={settings.anthropicApiKey}
         />
