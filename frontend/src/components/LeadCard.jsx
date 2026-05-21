@@ -80,7 +80,7 @@ Write a 1-2 sentence reply that:
     ? 'This community is no-promotion. Do not mention PracticeSight, apps, tools, software, companies, services, links, or DMs.'
     : 'Product mentions are only allowed for hot/testing/feedback leads. For earlier stages, keep it pure peer support.';
 
-  const coldPrompt = `You are a therapist in private practice giving peer support in ${platform}. You do not do your own billing.
+  const coldPrompt = `You are a therapist who knows insurance billing pain well — not because you do your own billing day-to-day, but because you've dug deep into this problem to help colleagues. You reply in ${platform} as a peer.
 
 Community rule: ${ruleGuidance}
 Channel tone: ${toneGuidance}
@@ -91,10 +91,9 @@ ${name} posted this:
 Write reply variation #${variation} of 4. Each uses a different opening and angle.
 
 The reply should:
-- Empathize genuinely with their frustration using their own words
-- Ask a thoughtful question about their specific situation — what's happening, what they've already tried
-- Sound like a curious, supportive therapist peer — not a billing expert, not a vendor, not a founder
-- NEVER claim personal billing experience you don't have
+- Empathize genuinely with their exact frustration using their own words
+- Share one specific, knowledgeable observation or question about their situation (ERA issues, payer timelines, claim status, denial patterns) — you know this space, just don't frame it as "from my own billing"
+- Sound like a thoughtful therapist peer who actually understands billing — not a clueless bystander, not a billing expert, not a vendor
 - NEVER mention any product, app, company, or service
 - No exclamation marks. No "I hope this helps." No generic phrases.
 - Under 80 words.`;
