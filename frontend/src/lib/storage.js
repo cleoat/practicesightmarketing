@@ -27,7 +27,12 @@ export function setLeads(leads) {
 }
 
 export function getSettings() {
-  return getStorage(STORAGE_KEYS.settings) || DEFAULT_SETTINGS;
+  const stored = getStorage(STORAGE_KEYS.settings) || {};
+  return {
+    ...DEFAULT_SETTINGS,
+    ...stored,
+    openrouterApiKey: stored.openrouterApiKey || import.meta.env.VITE_OPENROUTER_API_KEY || '',
+  };
 }
 
 export function setSettings(settings) {

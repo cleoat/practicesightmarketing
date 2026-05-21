@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { APP_BUILD_LABEL, COLORS } from '../lib/constants';
-import { DEFAULT_OPENROUTER_MODELS, getOpenRouterKeyIssue, normalizeOpenRouterKey, testOpenRouterKey } from '../lib/openrouter';
+import { DEFAULT_OPENROUTER_MODELS, testOpenRouterKey } from '../lib/openrouter';
 
 export function SettingsPanel({ settings, onUpdate }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -8,26 +8,7 @@ export function SettingsPanel({ settings, onUpdate }) {
   const [keyStatus, setKeyStatus] = useState('');
   const [keyStatusType, setKeyStatusType] = useState('info');
 
-  const handleKeyChange = (value) => {
-    onUpdate('openrouterApiKey', value);
-    setKeyStatus('');
-  };
-
-  const handleKeyBlur = (value) => {
-    const normalized = normalizeOpenRouterKey(value);
-    if (normalized !== value) {
-      onUpdate('openrouterApiKey', normalized);
-    }
-  };
-
   const handleTestKey = async () => {
-    const issue = getOpenRouterKeyIssue(settings.openrouterApiKey);
-    if (issue) {
-      setKeyStatusType('error');
-      setKeyStatus(issue);
-      return;
-    }
-
     setTesting(true);
     setKeyStatus('');
     try {
@@ -89,30 +70,23 @@ export function SettingsPanel({ settings, onUpdate }) {
           }}>
             OpenRouter API Key
           </label>
-          <input
-            type="password"
-            placeholder="sk-or-v1-..."
-            value={settings.openrouterApiKey || ''}
-            onChange={(e) => handleKeyChange(e.target.value)}
-            onBlur={(e) => handleKeyBlur(e.target.value)}
-            style={{
-              width: '100%', padding: '8px 10px',
-              border: '1px solid #ddd', borderRadius: 6,
-              fontSize: 14, boxSizing: 'border-box', fontFamily: 'monospace'
-            }}
-          />
-          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 5 }}>
-            Use an OpenRouter key, not an OpenAI key. Stored locally in this browser.
+          <div style={{
+            padding: '8px 10px', borderRadius: 6, fontSize: 13,
+            background: settings.openrouterApiKey ? '#E5F5EB' : '#FFF3CD',
+            color: settings.openrouterApiKey ? '#166534' : '#856404',
+            border: `1px solid ${settings.openrouterApiKey ? '#B8E5C8' : '#FFEAA7'}`,
+          }}>
+            {settings.openrouterApiKey ? '✓ Key configured via environment' : '⚠ No API key — set VITE_OPENROUTER_API_KEY in Vercel'}
           </div>
           <button
             onClick={handleTestKey}
-            disabled={testing}
+            disabled={testing || !settings.openrouterApiKey}
             style={{
               marginTop: 10, padding: '9px 13px', fontSize: 14, fontWeight: 800,
-              background: testing ? '#9CA3AF' : '#fff',
-              color: testing ? '#fff' : COLORS.secondary,
-              border: `1px solid ${testing ? '#9CA3AF' : COLORS.secondary}`,
-              borderRadius: 6, cursor: testing ? 'not-allowed' : 'pointer',
+              background: (testing || !settings.openrouterApiKey) ? '#9CA3AF' : '#fff',
+              color: (testing || !settings.openrouterApiKey) ? '#fff' : COLORS.secondary,
+              border: `1px solid ${(testing || !settings.openrouterApiKey) ? '#9CA3AF' : COLORS.secondary}`,
+              borderRadius: 6, cursor: (testing || !settings.openrouterApiKey) ? 'not-allowed' : 'pointer',
               fontFamily: 'inherit'
             }}
           >
