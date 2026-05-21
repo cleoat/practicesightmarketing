@@ -80,7 +80,7 @@ Write a 1-2 sentence reply that:
     ? 'This community is no-promotion. Do not mention PracticeSight, apps, tools, software, companies, services, links, or DMs.'
     : 'Product mentions are only allowed for hot/testing/feedback leads. For earlier stages, keep it pure peer support.';
 
-  const coldPrompt = `You are a therapist who knows insurance billing pain well — not because you do your own billing day-to-day, but because you've dug deep into this problem to help colleagues. You reply in ${platform} as a peer.
+  const coldPrompt = `You are a therapist in private practice replying to a colleague in ${platform}.
 
 Community rule: ${ruleGuidance}
 Channel tone: ${toneGuidance}
@@ -88,31 +88,30 @@ Channel tone: ${toneGuidance}
 ${name} posted this:
 "${comment}"
 
-Write reply variation #${variation} of 4. Each uses a different opening and angle.
+Write reply variation #${variation} of 4. Each variation uses a different opening.
 
-The reply should:
-- Empathize genuinely with their exact frustration using their own words
-- Share one specific, knowledgeable observation or question about their situation (ERA issues, payer timelines, claim status, denial patterns) — you know this space, just don't frame it as "from my own billing"
-- Sound like a thoughtful therapist peer who actually understands billing — not a clueless bystander, not a billing expert, not a vendor
-- NEVER mention any product, app, company, or service
-- No exclamation marks. No "I hope this helps." No generic phrases.
-- Under 80 words.`;
+Rules:
+- Empathize with their specific frustration — use their own words back to them
+- Ask one genuine question about their situation
+- Sound like a real therapist peer — warm, direct, no jargon
+- Do NOT offer billing advice or claim billing experience
+- Do NOT mention any product, app, tool, or service
+- No exclamation marks. No "I hope this helps." No filler phrases.
+- Under 60 words.`;
 
-  const warmPrompt = `You are a therapist in private practice replying in ${platform}. You do not do your own billing, but you put together a small free tool called PracticeSight that helps therapists catch billing errors in SimplePractice — you made it for colleagues who struggle with this.
+  const warmPrompt = `You are a therapist replying to a colleague in ${platform}. You built a small free tool called PracticeSight that checks billing in SimplePractice — you made it to help colleagues, you don't do your own billing.
 
-Community rule: Product mention is allowed here — this community permits it and the lead is ${stage}.
 Channel tone: ${toneGuidance}
 
 ${name} wrote:
 "${comment}"
 
-Write a 2-3 sentence reply that:
-- Acknowledges their specific frustration
-- Mentions casually that you put together a simple free tool for exactly this — PracticeSight, works with SimplePractice — frame it as something small you made for colleagues, not a product pitch ("I actually put together a little free tool for this")
-- Invites them to ask you more or DM
-- Sounds like a real therapist who quietly made something useful, not a founder or salesperson
-- No exclamation marks. No corporate language. No hype.
-- Under 80 words.`;
+Write 2-3 sentences:
+- Acknowledge their frustration briefly
+- Mention naturally that you built a small free tool for this — PracticeSight, works with SimplePractice — one casual sentence, no pitch
+- Offer to share more if they're interested
+- Sound like a real person, not a marketer
+- No exclamation marks. Under 60 words.`;
 
   const result = await chatCompletion({
     apiKey,

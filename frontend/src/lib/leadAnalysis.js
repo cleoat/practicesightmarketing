@@ -2,6 +2,18 @@ function hasAny(text, patterns) {
   return patterns.some(p => p.test(text));
 }
 
+// ── OFFERING HELP / SERVICE PROVIDER ────────────────────────────────
+const OFFERING_HELP_PATTERNS = [
+  /\b(i|we)\s+can\s+help\s+(you|with|your|therapists|practices)\b/,
+  /\b(i|we)\s+(offer|provide|specialize in|focus on)\s+(billing|rcm|revenue cycle|claims|medical billing)\b/,
+  /\bfeel free to\s+(reach out|contact|dm|message)\b/,
+  /\b(reach out|contact us|dm me|message me)\s+(if you need|for help|to learn more|anytime)\b/,
+  /\bhappy to\s+(help|assist|answer|chat|discuss)\b/,
+  /\b(available|here)\s+(to help|for questions|if you have questions)\b/,
+  /\bcheck out\s+(my|our)\s+(website|service|company|profile)\b/,
+  /\bwe\s+(specialize|work)\s+(in|with)\s+(therapists|therapy practices|mental health)\b/,
+];
+
 // ── VENDOR / BILLING COMPANY ────────────────────────────────────────
 const BILLING_VENDOR_PATTERNS = [
   // "we do [the] [entire/whole] billing"
@@ -70,11 +82,11 @@ const FEEDBACK_PATTERNS = [
 ];
 
 function classifyPersona(text) {
-  if (hasAny(text, BILLING_VENDOR_PATTERNS)) {
+  if (hasAny(text, OFFERING_HELP_PATTERNS) || hasAny(text, BILLING_VENDOR_PATTERNS)) {
     return {
       leadType: 'billing_vendor',
       responseType: '🏢 Billing company / vendor',
-      reason: 'They describe doing billing work for multiple clients or practices — not a therapist doing their own billing.',
+      reason: 'They are offering billing help or describing billing work for multiple clients — not a therapist doing their own billing.',
       blocksWarm: true,
     };
   }
