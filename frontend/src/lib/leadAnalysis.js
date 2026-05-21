@@ -46,10 +46,12 @@ const BILLING_VENDOR_PATTERNS = [
 // ── OUTSOURCED / NOT THE BILLER ────────────────────────────────────
 const OUTSOURCED_PATTERNS = [
   /\b(headway|alma|grow therapy|sondermind|rive|octave|brightside)\b/,
-  /\b(my|our)\s+biller\s+(handles|does|takes care of|manages)\b/,
-  /\b(i|we)\s+(have|use|hired|outsource\s+to)\s+(a\s+)?(biller|billing company|billing service|virtual biller)\b/,
+  /\bmy\s+biller\b/,
+  /\b(my|our)\s+biller\s+(handles|does|takes care of|manages|works|is)\b/,
+  /\b(i|we)\s+(have|use|hired|outsource\s+to|love|like|trust)\s+(a\s+|my\s+)?(biller|billing company|billing service|virtual biller)\b/,
   /\bsomeone\s+else\s+(handles|does|manages)\s+(the\s+)?billing\b/,
   /\bi\s+don'?t\s+(do|handle|manage|touch)\s+(my|our|the)\s+own?\s+billing\b/,
+  /\b(flat\s+rate|monthly\s+fee)\s+(for\s+)?(billing|claims)\b/,
 ];
 
 // ── BILLING PAIN — IDEAL LEAD ───────────────────────────────────────

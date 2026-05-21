@@ -32,7 +32,7 @@ const LEAD_TYPE_META = {
   },
 };
 
-async function generateReply(comment, name, apiKey, source, channel, stage, leadType, variationNum, preferredModel) {
+async function generateReply(comment, name, apiKey, source, channel, stage, leadType, intent, variationNum, preferredModel) {
   const communityRule = getCommunityRule(source, channel, COMMUNITIES);
   const platform = formatCommunityForPrompt(communityRule);
   const toneGuidance = communityToneGuidance(communityRule);
@@ -80,24 +80,36 @@ Write a 1-2 sentence reply that:
     ? 'This community is no-promotion. Do not mention PracticeSight, apps, tools, software, companies, services, links, or DMs.'
     : 'Product mentions are only allowed for hot/testing/feedback leads. For earlier stages, keep it pure peer support.';
 
-  const coldPrompt = `You are a therapist in private practice replying to a colleague in ${platform}.
+  const intentContext = {
+    billing_pain: 'They are expressing frustration or struggle with their own billing.',
+    question: 'They are asking a question or looking for input.',
+    low_signal: 'They made a general comment — no clear pain or question expressed.',
+    buying_intent: 'They are asking about a specific tool or solution.',
+    testing: 'They are trying or testing something.',
+    feedback: 'They are sharing feedback or results.',
+  }[intent] || 'They made a general comment.';
+
+  const coldPrompt = `You are a therapist in private practice. You are replying to a colleague in ${platform}.
+
+Context: ${intentContext}
 
 Community rule: ${ruleGuidance}
 Channel tone: ${toneGuidance}
 
-${name} posted this:
+${name} wrote:
 "${comment}"
 
-Write reply variation #${variation} of 4. Each variation uses a different opening.
+Write reply variation #${variation} of 4. Each variation has a different opening.
 
 Rules:
-- Empathize with their specific frustration — use their own words back to them
-- Ask one genuine question about their situation
-- Sound like a real therapist peer — warm, direct, no jargon
-- Do NOT offer billing advice or claim billing experience
+- Respond ONLY to what they actually said — never invent problems or pain they did not express
+- If they shared something positive, acknowledge it genuinely before asking anything
+- If they expressed frustration, reflect it back using their words
+- Ask one natural follow-up question that fits what they actually wrote
+- Sound like a real therapist peer — curious, warm, no agenda
+- Do NOT give billing advice, project problems onto them, or claim billing experience
 - Do NOT mention any product, app, tool, or service
-- No exclamation marks. No "I hope this helps." No filler phrases.
-- Under 60 words.`;
+- No exclamation marks. No filler phrases. Under 60 words.`;
 
   const warmPrompt = `You are a therapist replying to a colleague in ${platform}. You built a small free tool called PracticeSight that checks billing in SimplePractice — you made it to help colleagues, you don't do your own billing.
 
@@ -201,7 +213,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setVariationNum(nextVariation);
     setGenerating(true);
     try {
-      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.ch, lead.stage, leadType, nextVariation, preferredModel);
+      const reply = await generateReply(lead.comment, lead.name, apiKey, lead.source, lead.ch, lead.stage, leadType, liveAnalysis.intent, nextVariation, preferredModel);
       setGeneratedReply(reply);
       onUpdate(lead.id, { reply });
     } catch (e) {
