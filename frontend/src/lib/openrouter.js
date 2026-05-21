@@ -2,11 +2,12 @@ const API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const FALLBACK_REFERER = 'https://practicesightmarketing.vercel.app';
 
 export const DEFAULT_OPENROUTER_MODELS = [
+  'openai/gpt-oss-20b:free',
+  'openai/gpt-oss-120b:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
   'deepseek/deepseek-v4-flash:free',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'meta-llama/llama-3.2-3b-instruct:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
   'google/gemma-4-31b-it:free',
+  'meta-llama/llama-3.2-3b-instruct:free',
 ];
 
 export function normalizeOpenRouterKey(key) {
