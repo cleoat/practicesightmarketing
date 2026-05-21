@@ -61,8 +61,24 @@ function firstUrl(rawText) {
   return match ? match[0].replace(/[.,;]+$/, '') : '';
 }
 
+function formatImportDate(now) {
+  return new Date(now).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 function isTimestamp(line) {
   return TIMESTAMP_PATTERN.test(line);
+}
+
+function isScrambledFacebookMeta(line) {
+  const cleaned = cleanLine(line);
+  if (!cleaned) return true;
+  if (/^srponstedo$/i.test(cleaned)) return true;
+  if (/^:+$/.test(cleaned)) return true;
+  return /^[a-z0-9]{2,12}$/i.test(cleaned) && /\d/.test(cleaned);
 }
 
 function isNoise(line) {
@@ -99,17 +115,81 @@ function shouldSkipComment(comment) {
   return false;
 }
 
-function sliceRelevantThread(lines) {
+function isSameText(a, b) {
+  const first = normalizeText(a);
+  const second = normalizeText(b);
+  return Boolean(first && second && first === second);
+}
+
+function hasCommentBeforeTimestamp(lines, startIndex) {
+  let commentLength = 0;
+
+  for (let index = startIndex + 1; index < Math.min(lines.length, startIndex + 18); index += 1) {
+    const line = lines[index];
+
+    if (isTimestamp(line)) return commentLength >= 5;
+    if (isNoise(line) || isScrambledFacebookMeta(line)) continue;
+    if (isLikelyName(line) && commentLength === 0) return false;
+
+    commentLength += normalizeText(line).length;
+  }
+
+  return false;
+}
+
+function findFirstCommentIndex(lines, sourceInfo) {
+  return lines.findIndex((line, index) => {
+    if (!isLikelyName(line)) return false;
+    if (sourceInfo.source && isSameText(line, sourceInfo.source)) return false;
+    return hasCommentBeforeTimestamp(lines, index);
+  });
+}
+
+function sliceRelevantThread(lines, sourceInfo) {
   const startMarkers = ['most relevant', 'all comments', 'view more comments'];
   const endMarkers = ['comment as '];
 
   const startIndex = lines.findIndex(line => startMarkers.includes(line.toLowerCase()));
-  const sliced = startIndex >= 0 ? lines.slice(startIndex + 1) : lines;
+  const firstCommentIndex = startIndex >= 0 ? startIndex + 1 : findFirstCommentIndex(lines, sourceInfo);
+  const sliced = firstCommentIndex >= 0 ? lines.slice(firstCommentIndex) : lines;
   const endIndex = sliced.findIndex(line =>
     endMarkers.some(marker => line.toLowerCase().startsWith(marker))
   );
 
   return endIndex >= 0 ? sliced.slice(0, endIndex) : sliced;
+}
+
+function findPostAuthor(lines, sourceInfo, firstCommentIndex) {
+  const sourceIndex = sourceInfo.source
+    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
+    : -1;
+  const startIndex = sourceIndex >= 0 ? sourceIndex + 1 : 0;
+  const stopIndex = firstCommentIndex >= 0 ? firstCommentIndex : lines.length;
+
+  for (let index = startIndex; index < stopIndex; index += 1) {
+    const line = lines[index];
+    if (!isLikelyName(line)) continue;
+    if (sourceInfo.source && isSameText(line, sourceInfo.source)) continue;
+    return line;
+  }
+
+  return '';
+}
+
+function extractPostText(lines, sourceInfo, postAuthor, firstCommentIndex) {
+  const stopIndex = firstCommentIndex >= 0 ? firstCommentIndex : lines.length;
+  const parts = [];
+
+  for (let index = 0; index < stopIndex; index += 1) {
+    const line = lines[index];
+    if (isNoise(line) || isTimestamp(line) || isScrambledFacebookMeta(line)) continue;
+    if (sourceInfo.source && isSameText(line, sourceInfo.source)) continue;
+    if (postAuthor && isSameText(line, postAuthor)) continue;
+    if (line.length < 18) continue;
+    parts.push(line);
+  }
+
+  return parts.join('\n').trim();
 }
 
 export function detectThreadSource(rawText, communities = []) {
@@ -144,7 +224,10 @@ export function parseCopiedThread(rawText, communities = []) {
     .filter(Boolean);
 
   const sourceInfo = detectThreadSource(rawText, communities);
-  const relevantLines = sliceRelevantThread(lines);
+  const firstCommentIndex = findFirstCommentIndex(lines, sourceInfo);
+  const postAuthor = findPostAuthor(lines, sourceInfo, firstCommentIndex);
+  const postText = extractPostText(lines, sourceInfo, postAuthor, firstCommentIndex);
+  const relevantLines = sliceRelevantThread(lines, sourceInfo);
   const comments = [];
   let current = null;
 
@@ -162,27 +245,35 @@ export function parseCopiedThread(rawText, communities = []) {
     current = null;
   }
 
-  for (const line of relevantLines) {
+  relevantLines.forEach((line, index) => {
     if (isTimestamp(line)) {
       finishCurrent();
-      continue;
+      return;
     }
 
     if (!current) {
       if (isLikelyName(line)) current = { name: line, parts: [] };
-      continue;
+      return;
     }
 
-    if (isNoise(line)) continue;
+    if (isLikelyName(line) && hasCommentBeforeTimestamp(relevantLines, index)) {
+      finishCurrent();
+      current = { name: line, parts: [] };
+      return;
+    }
+
+    if (isNoise(line)) return;
 
     current.parts.push(line);
-  }
+  });
 
   finishCurrent();
 
   return {
     ...sourceInfo,
     threadUrl: firstUrl(rawText),
+    postAuthor,
+    postText,
     comments,
   };
 }
@@ -233,6 +324,7 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
   const baseChannel = parsed.channel || options.defaultChannel || 'facebook';
   const baseSource = parsed.source || options.defaultSource || '';
   const now = options.now || Date.now();
+  const importedAt = formatImportDate(now);
 
   let added = 0;
   let updated = 0;
@@ -270,6 +362,9 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
         source: existing.source || incoming.source,
         ch: existing.ch || incoming.ch,
         threadUrl: existing.threadUrl || options.threadUrl || parsed.threadUrl || '',
+        postAuthor: existing.postAuthor || parsed.postAuthor || '',
+        postText: existing.postText || parsed.postText || '',
+        importedAt: existing.importedAt || importedAt,
       };
       updated += 1;
       updatedNames.push(incoming.name);
@@ -288,8 +383,11 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
       responseType: analysis.responseType,
       intent: analysis.intent,
       analysisReason: analysis.reason,
-      date: new Date(now).toLocaleDateString(),
+      date: importedAt,
       threadUrl: options.threadUrl || parsed.threadUrl || '',
+      postAuthor: parsed.postAuthor || '',
+      postText: parsed.postText || '',
+      importedAt,
     });
     added += 1;
     addedNames.push(incoming.name);
@@ -298,6 +396,7 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
   return {
     leads: nextLeads,
     parsed,
+    importedAt,
     added,
     updated,
     skipped,

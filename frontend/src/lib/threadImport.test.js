@@ -84,6 +84,120 @@ Share
 Comment as Leonardo
 `;
 
+const rawFacebookCopy = `
+Mental Health Billing Support
+Leonardo Aguilar
+ ·
+srponStedo
+1
+0ti
+a
+e
+M
+3mc
+r
+4
+m0
+:
+f
+y
+4
+t
+d
+0
+s
+Y
+81fl4fg2
+e
+1tf
+a
+4
+06
+A
+11l
+t
+a
+m2
+ ·
+Hello Group, For those of you in private practice who do your own insurance billing, how do you do your month-end review? Do you have like a system or is it more just knowing your numbers very well to catch things? Genuinely curious what works for you!
+Zuraiz Khan
+Lets connect?
+20h
+Reply
+Send message
+Share
+Anonymous participant 177
+Please check ib
+1d
+Reply
+Share
+Jethro Magaji
+Most people who do their own billing eventually develop a simple monthly reconciliation system.
+Typical month end workflow:
+- Claims submitted = compare against claims paid
+- ERA/EOB = match against bank deposits
+- Check unpaid/denied claims
+- Review aging reports (30/60/90 days)
+- Compare scheduled sessions vs billed sessions
+Some people know their numbers really well, but most successful practices rely on:
+- EHR reporting
+- spreadsheets/dashboard tracking
+- weekly reconciliation habits
+That's why strong billing visibility matters so much in systems like ClinikEHR, TherapyNotes, etc.
+1d
+Reply
+Send message
+Share
+Anonymous participant 617
+I use InvoQuest
+23h
+Reply
+Share
+Hallee Nelson
+Routine is so important in billing! Reports inside your EHR should be a great asset to see what is outstanding and being able to match up any payments helps.
+1d
+Reply
+Send message
+Share
+Brenda Adams
+Run reports in ur billing system and reconcile bank deposits to posted /closed claims. On the billing system, run an a/r aging report and work all open claims. A lot can be done on ur clearinghouse platform as well.
+Pivot RCM Solutions, LLC
+b.adams@pivotrcm.com
+1d
+Reply
+Send message
+Share
+Edited
+Claire Lah
+I would first be in a set routine with your billing. Then you would run a charge lay report and days in ar for basics let me know if I can help
+1d
+Reply
+Send message
+Share
+Musawir Khan
+  ·
+A good month-end review usually includes checking total charges, payments, denials, aging AR, unsubmitted claims, and insurance balances to catch anything missed. Having a consistent report/reconciliation process helps much more than just memorizing numbers. We also help practices with billing audits, AR review, and month-end reporting support.
+1d
+Reply
+Send message
+Share
+Aisha Khan
+Collection report
+22h
+Reply
+Send message
+Share
+David Shahzad
+Send me text. I will let you know all the process and also share you information how itself work
+1d
+Reply
+Send message
+Share
+Facebook
+Facebook
+Facebook
+`;
+
 describe('parseCopiedThread', () => {
   it('extracts Facebook comments from noisy copied thread text', () => {
     const result = parseCopiedThread(copiedPost, communities);
@@ -102,6 +216,28 @@ describe('parseCopiedThread', () => {
     ]);
     expect(result.comments.find(comment => comment.name === 'Jethro Magaji').comment).toContain('monthly reconciliation system');
     expect(result.comments.find(comment => comment.name === 'Brenda Adams').comment).toContain('Pivot RCM Solutions');
+  });
+
+  it('extracts comments and post context from raw Facebook copied data without a marker', () => {
+    const result = parseCopiedThread(rawFacebookCopy, communities);
+
+    expect(result.channel).toBe('facebook');
+    expect(result.source).toBe('Mental Health Billing Support');
+    expect(result.postAuthor).toBe('Leonardo Aguilar');
+    expect(result.postText).toContain('Hello Group');
+    expect(result.comments.map(comment => comment.name)).toEqual([
+      'Zuraiz Khan',
+      'Anonymous participant 177',
+      'Jethro Magaji',
+      'Anonymous participant 617',
+      'Hallee Nelson',
+      'Brenda Adams',
+      'Claire Lah',
+      'Musawir Khan',
+      'Aisha Khan',
+      'David Shahzad',
+    ]);
+    expect(result.comments.find(comment => comment.name === 'Mental Health Billing Support')).toBeUndefined();
   });
 
   it('detects verified communities from direct links in the copied text', () => {
@@ -159,6 +295,26 @@ describe('importCopiedThread', () => {
     const invoquest = result.leads.find(lead => lead.name === 'Anonymous participant 617');
     expect(invoquest.stage).toBe('not_fit');
     expect(invoquest.leadType).toBe('outsourced_billing');
+  });
+
+  it('imports raw Facebook data with source, author, counts, and date', () => {
+    const result = importCopiedThread(rawFacebookCopy, [], {
+      communities,
+      now: new Date('2026-05-21T12:00:00Z').getTime(),
+    });
+
+    expect(result.added).toBe(10);
+    expect(result.updated).toBe(0);
+    expect(result.skipped).toBe(0);
+    expect(result.importedAt).toBe('May 21, 2026');
+    expect(result.parsed.source).toBe('Mental Health Billing Support');
+    expect(result.parsed.postAuthor).toBe('Leonardo Aguilar');
+
+    const david = result.leads.find(lead => lead.name === 'David Shahzad');
+    expect(david.date).toBe('May 21, 2026');
+    expect(david.source).toBe('Mental Health Billing Support');
+    expect(david.postAuthor).toBe('Leonardo Aguilar');
+    expect(david.stage).toBe('not_fit');
   });
 
   it('skips exact duplicates and appends new comments to existing lead history', () => {

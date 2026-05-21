@@ -43,6 +43,11 @@ function App() {
 
   const inputAnalysis = analyzeLeadComment(inputComment);
   const importPreview = importText.trim() ? parseCopiedThread(importText, COMMUNITIES) : null;
+  const importPreviewDate = new Date().toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   function handleCommunitySelect(name, channel) {
     setInputSource(name);
@@ -90,7 +95,7 @@ function App() {
 
     setLeadsState(result.leads);
     setImportResult(result);
-    setMsg(`Imported ${result.added} new, updated ${result.updated}, skipped ${result.skipped}`);
+    setMsg(`Imported ${result.added} new from ${result.parsed.source || 'this thread'}`);
     setTimeout(() => setMsg(''), 2200);
   }
 
@@ -322,7 +327,7 @@ function App() {
           {importPreview && (
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
               gap: 10,
               marginBottom: 10,
             }}>
@@ -333,7 +338,33 @@ function App() {
                 border: `1px solid ${COLORS.border}`,
               }}>
                 <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
-                  Detected
+                  Where it was
+                </div>
+                <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
+                  {importPreview.source || inputSource || 'Unknown source'}
+                </div>
+              </div>
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: '#F8FAFC',
+                border: `1px solid ${COLORS.border}`,
+              }}>
+                <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
+                  From where
+                </div>
+                <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
+                  {importPreview.postAuthor ? `${importPreview.postAuthor}'s post` : `${importPreview.channel || inputChannel} thread`}
+                </div>
+              </div>
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: '#F8FAFC',
+                border: `1px solid ${COLORS.border}`,
+              }}>
+                <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Found
                 </div>
                 <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
                   {importPreview.comments.length} comments
@@ -346,25 +377,28 @@ function App() {
                 border: `1px solid ${COLORS.border}`,
               }}>
                 <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
-                  Source
+                  Import date
                 </div>
                 <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
-                  {importPreview.source || inputSource || 'Unknown'}
+                  {importPreviewDate}
                 </div>
               </div>
-              <div style={{
-                padding: '10px 12px',
-                borderRadius: 8,
-                background: '#F8FAFC',
-                border: `1px solid ${COLORS.border}`,
-              }}>
-                <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
-                  Channel
-                </div>
-                <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
-                  {importPreview.channel || inputChannel}
-                </div>
-              </div>
+            </div>
+          )}
+
+          {importPreview?.postText && (
+            <div style={{
+              fontSize: 14,
+              lineHeight: 1.45,
+              color: COLORS.text,
+              background: '#F8FAFC',
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              padding: '10px 12px',
+              marginBottom: 10,
+            }}>
+              <strong>Original post:</strong> {importPreview.postText.slice(0, 240)}
+              {importPreview.postText.length > 240 ? '...' : ''}
             </div>
           )}
 
@@ -392,7 +426,13 @@ function App() {
               fontWeight: 800,
               lineHeight: 1.45,
             }}>
-              {importResult.error || `Added ${importResult.added}, updated ${importResult.updated}, skipped ${importResult.skipped}.`}
+              {importResult.error || (
+                <span>
+                  Imported {importResult.importedAt} from {importResult.parsed.source || 'unknown source'}
+                  {importResult.parsed.postAuthor ? `, ${importResult.parsed.postAuthor}'s post` : ''}.
+                  {' '}Parsed {importResult.parsed.comments.length} comments. Added {importResult.added}, updated {importResult.updated}, skipped {importResult.skipped}.
+                </span>
+              )}
               {!importResult.error && importResult.updatedNames.length > 0 && (
                 <span> Updated: {importResult.updatedNames.slice(0, 5).join(', ')}.</span>
               )}
