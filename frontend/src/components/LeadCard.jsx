@@ -41,15 +41,16 @@ async function generateReply(comment, name, apiKey, source, channel, stage, lead
 
   // Vendor / billing company — ask for a referral, don't pitch
   if (leadType === 'billing_vendor') {
-    const referralPrompt = `You are a therapist who built PracticeSight, a free billing QA tool for SimplePractice.
+    const referralPrompt = `You are a therapist. You don't do your own billing, but you put together a small free tool called PracticeSight that helps therapists catch billing errors in SimplePractice — you made it for colleagues, not for yourself.
 
-This person appears to be a billing company or billing service provider, not a therapist themselves. They wrote:
+This person appears to be a billing company or service provider. They wrote:
 "${comment}"
 
-Write a 1-2 sentence friendly reply that:
+Write a 1-2 sentence reply that:
 - Briefly acknowledges what they do
-- Naturally asks if they work with any therapists who use SimplePractice and do their own billing — those are exactly who PracticeSight is built for
-- Zero pressure, genuine curiosity
+- Casually mentions you made a simple free billing checker for therapists who use SimplePractice — and asks if any of their clients fit that description
+- Sounds like a curious therapist, not a salesperson or founder
+- Zero pressure
 - Under 35 words
 - No exclamation marks`;
 
@@ -59,16 +60,17 @@ Write a 1-2 sentence friendly reply that:
 
   // Outsourced billing — ask for colleague referral
   if (leadType === 'outsourced_billing') {
-    const outsourcedPrompt = `You are a therapist who built PracticeSight, a free billing QA tool for SimplePractice.
+    const outsourcedPrompt = `You are a therapist. You don't do your own billing, but you put together a small free tool called PracticeSight that helps therapists catch billing errors in SimplePractice — you made it for colleagues, not for yourself.
 
-This person has their billing handled for them and wrote:
+This person has their billing outsourced and wrote:
 "${comment}"
 
 Write a 1-2 sentence reply that:
-- Acknowledges that this tool probably isn't for them directly
-- Asks if they know any colleagues who do their own billing in SimplePractice — those are exactly who it's for
-- Friendly, zero pressure
-- Under 35 words`;
+- Acknowledges this probably isn't relevant to them directly since they outsource billing
+- Casually asks if they know any colleagues who handle their own billing in SimplePractice — that's who it's for
+- Sounds like a fellow therapist, not a vendor
+- Under 35 words
+- No exclamation marks`;
 
     const result = await chatCompletion({ apiKey, maxTokens: 150, preferredModel, messages: [{ role: 'user', content: outsourcedPrompt }] });
     return result.text;
@@ -78,7 +80,7 @@ Write a 1-2 sentence reply that:
     ? 'This community is no-promotion. Do not mention PracticeSight, apps, tools, software, companies, services, links, or DMs.'
     : 'Product mentions are only allowed for hot/testing/feedback leads. For earlier stages, keep it pure peer support.';
 
-  const coldPrompt = `You are a licensed therapist in private practice giving peer support in ${platform}.
+  const coldPrompt = `You are a therapist in private practice giving peer support in ${platform}. You do not do your own billing.
 
 Community rule: ${ruleGuidance}
 Channel tone: ${toneGuidance}
@@ -89,28 +91,28 @@ ${name} posted this:
 Write reply variation #${variation} of 4. Each uses a different opening and angle.
 
 The reply should:
-- Empathize with their exact frustration using their own words
-- Share ONE specific practical tip from personal billing experience (e.g. ERA enrollment batching, calling payer reps directly, aging claim follow-up after 30 days, checking claim status before calling)
-- End with a genuine question about their specific situation
-- Sound exactly like a fellow therapist — not a company, marketer, or vendor
-- NEVER mention any product, app, company, or service by name
+- Empathize genuinely with their frustration using their own words
+- Ask a thoughtful question about their specific situation — what's happening, what they've already tried
+- Sound like a curious, supportive therapist peer — not a billing expert, not a vendor, not a founder
+- NEVER claim personal billing experience you don't have
+- NEVER mention any product, app, company, or service
 - No exclamation marks. No "I hope this helps." No generic phrases.
 - Under 80 words.`;
 
-  const warmPrompt = `You are a therapist in private practice who personally solved their billing headaches, replying in ${platform}.
+  const warmPrompt = `You are a therapist in private practice replying in ${platform}. You do not do your own billing, but you put together a small free tool called PracticeSight that helps therapists catch billing errors in SimplePractice — you made it for colleagues who struggle with this.
 
-Community rule: Product mentions are allowed here — this community is marked can-mention and the lead is ${stage}.
+Community rule: Product mention is allowed here — this community permits it and the lead is ${stage}.
 Channel tone: ${toneGuidance}
 
 ${name} wrote:
 "${comment}"
 
-Write a warm personal reply of 2-3 sentences that:
+Write a 2-3 sentence reply that:
 - Acknowledges their specific frustration
-- Shares that you personally found PracticeSight which handles insurance billing and revenue recovery for therapy practices — frame it as a personal discovery ("I found something that actually fixed this for me")
+- Mentions casually that you put together a simple free tool for exactly this — PracticeSight, works with SimplePractice — frame it as something small you made for colleagues, not a product pitch ("I actually put together a little free tool for this")
 - Invites them to ask you more or DM
-- Sounds like a real person sharing their experience, not an ad
-- No exclamation marks. No corporate language.
+- Sounds like a real therapist who quietly made something useful, not a founder or salesperson
+- No exclamation marks. No corporate language. No hype.
 - Under 80 words.`;
 
   const result = await chatCompletion({
