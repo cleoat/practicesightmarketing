@@ -10,6 +10,11 @@ const OFFERING_HELP_PATTERNS = [
   /\b(reach out|contact us|dm me|message me)\s+(if you need|for help|to learn more|anytime)\b/,
   /\bhappy to\s+(help|assist|answer|chat|discuss)\b/,
   /\b(available|here)\s+(to help|for questions|if you have questions)\b/,
+  /\blet'?s\s+connect\b/,
+  /\blet\s+me\s+know\s+if\s+(i|we)\s+can\s+help\b/,
+  /\bsend\s+me\s+(a\s+)?(text|dm|message)\b/,
+  /\bplease\s+check\s+(ib|inbox|dm|messages?)\b/,
+  /\bwe\s+(also\s+)?help\s+(practices|therapists|providers|clinics|clinicians)\s+with\b/,
   /\bcheck out\s+(my|our)\s+(website|service|company|profile)\b/,
   /\bwe\s+(specialize|work)\s+(in|with)\s+(therapists|therapy practices|mental health)\b/,
 ];
@@ -27,6 +32,7 @@ const BILLING_VENDOR_PATTERNS = [
   /\b(our|my)\s+(billing company|billing service|billing agency|rcm company|billing department|billing team|billing staff)\b/,
   // standalone service-provider terms
   /\b(medical biller|medical billing company|revenue cycle management company|rcm company|billing agency|billing clearinghouse)\b/,
+  /\b(rcm|billing)\s+(solutions|services|support|consulting|consultants)\b/,
   // "for our clients / providers / practices"
   /\bfor\s+(our\s+)?(clients|providers|practices|clinicians|therapists)\b/,
   // "I'm a (medical) biller"
@@ -45,7 +51,7 @@ const BILLING_VENDOR_PATTERNS = [
 
 // ── OUTSOURCED / NOT THE BILLER ────────────────────────────────────
 const OUTSOURCED_PATTERNS = [
-  /\b(headway|alma|grow therapy|sondermind|rive|octave|brightside)\b/,
+  /\b(headway|alma|grow therapy|sondermind|rive|octave|brightside|invoquest)\b/,
   /\bmy\s+biller\b/,
   /\b(my|our)\s+biller\s+(handles|does|takes care of|manages|works|is)\b/,
   /\b(i|we)\s+(have|use|hired|outsource\s+to|love|like|trust)\s+(a\s+|my\s+)?(biller|billing company|billing service|virtual biller)\b/,

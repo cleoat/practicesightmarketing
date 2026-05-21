@@ -12,6 +12,16 @@ describe('analyzeLeadComment', () => {
     expect(result.intent).toBe('vendor_process');
   });
 
+  it('classifies sales/outreach replies as not fit', () => {
+    const result = analyzeLeadComment(
+      'Send me text. I will let you know all the process and share you information how it works.'
+    );
+
+    expect(result.stage).toBe('not_fit');
+    expect(result.leadType).toBe('billing_vendor');
+    expect(result.intent).toBe('vendor_process');
+  });
+
   it('classifies own-practice billing pain as warm', () => {
     const result = analyzeLeadComment(
       'I do my own billing in SimplePractice and my claims keep getting stuck. I cannot keep up with reconciliation.'

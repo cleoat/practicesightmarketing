@@ -7,6 +7,7 @@ import CommunitiesPanel, { COMMUNITIES } from './components/CommunitiesPanel';
 import { PostTemplatesPanel } from './components/PostTemplatesPanel';
 import { analyzeLeadComment } from './lib/leadAnalysis';
 import { inferChannelFromText } from './lib/communityRules';
+import { importCopiedThread, parseCopiedThread } from './lib/threadImport';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
@@ -24,6 +25,8 @@ function App() {
   const [inputChannel, setInputChannel] = useState('reddit');
   const [inputThreadUrl, setInputThreadUrl] = useState('');
   const [inputComment, setInputComment] = useState('');
+  const [importText, setImportText] = useState('');
+  const [importResult, setImportResult] = useState(null);
   const [msg, setMsg] = useState('');
   const [filter, setFilter] = useState('all');
   const [loaded, setLoaded] = useState(false);
@@ -39,6 +42,7 @@ function App() {
   useEffect(() => { if (loaded) setSettings(settings); }, [settings, loaded]);
 
   const inputAnalysis = analyzeLeadComment(inputComment);
+  const importPreview = importText.trim() ? parseCopiedThread(importText, COMMUNITIES) : null;
 
   function handleCommunitySelect(name, channel) {
     setInputSource(name);
@@ -55,6 +59,39 @@ function App() {
     setInputThreadUrl(value);
     const inferred = inferChannelFromText(value, COMMUNITIES);
     if (inferred && inferred !== inputChannel) setInputChannel(inferred);
+  }
+
+  function handleImportThread() {
+    const pasted = importText.trim();
+    if (!pasted) {
+      setImportResult(null);
+      setMsg('Paste a copied Facebook or Reddit thread first');
+      setTimeout(() => setMsg(''), 2000);
+      return;
+    }
+
+    const result = importCopiedThread(pasted, leads, {
+      communities: COMMUNITIES,
+      defaultChannel: inputChannel,
+      defaultSource: inputSource.trim(),
+      threadUrl: inputThreadUrl.trim(),
+      now: Date.now(),
+    });
+
+    if (result.parsed.channel) setInputChannel(result.parsed.channel);
+    if (result.parsed.source) setInputSource(result.parsed.source);
+
+    if (!result.parsed.comments.length) {
+      setImportResult({ ...result, error: 'No comments found in that paste.' });
+      setMsg('No comments found in that paste');
+      setTimeout(() => setMsg(''), 2200);
+      return;
+    }
+
+    setLeadsState(result.leads);
+    setImportResult(result);
+    setMsg(`Imported ${result.added} new, updated ${result.updated}, skipped ${result.skipped}`);
+    setTimeout(() => setMsg(''), 2200);
   }
 
   function handleAddLead() {
@@ -200,6 +237,171 @@ function App() {
           apiKey={settings.openrouterApiKey}
           preferredModel={settings.openrouterModel}
         />
+
+        {/* Copied thread import */}
+        <div style={{
+          background: '#fff', border: `1px solid ${COLORS.border}`,
+          borderRadius: 8, padding: 18, marginBottom: 20,
+          boxShadow: '0 10px 26px rgba(15, 23, 42, 0.06)'
+        }}>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginBottom: 12,
+          }}>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.text, marginBottom: 4 }}>
+                Paste copied thread
+              </div>
+              <div style={{ fontSize: 14, color: COLORS.muted, fontWeight: 700 }}>
+                Facebook and Reddit comments
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={handleImportThread}
+                disabled={!importText.trim()}
+                style={{
+                  padding: '11px 15px',
+                  fontSize: 15,
+                  fontWeight: 900,
+                  borderRadius: 8,
+                  border: 'none',
+                  background: importText.trim() ? COLORS.primary : '#CBD5E1',
+                  color: '#fff',
+                  cursor: importText.trim() ? 'pointer' : 'not-allowed',
+                  fontFamily: 'inherit'
+                }}
+              >
+                Import copied thread
+              </button>
+              <button
+                onClick={() => {
+                  setImportText('');
+                  setImportResult(null);
+                }}
+                style={{
+                  padding: '11px 13px',
+                  fontSize: 15,
+                  fontWeight: 800,
+                  borderRadius: 8,
+                  border: `1px solid ${COLORS.border}`,
+                  background: '#fff',
+                  color: COLORS.muted,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit'
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <textarea
+            placeholder="Paste the full copied Facebook or Reddit thread here..."
+            value={importText}
+            onChange={(e) => {
+              setImportText(e.target.value);
+              setImportResult(null);
+            }}
+            onKeyDown={(e) => e.ctrlKey && e.key === 'Enter' && handleImportThread()}
+            rows={8}
+            style={{
+              ...inputStyle,
+              fontSize: 16,
+              lineHeight: 1.45,
+              marginBottom: 10,
+              resize: 'vertical',
+              minHeight: 180,
+            }}
+          />
+
+          {importPreview && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 10,
+              marginBottom: 10,
+            }}>
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: '#F8FAFC',
+                border: `1px solid ${COLORS.border}`,
+              }}>
+                <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Detected
+                </div>
+                <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
+                  {importPreview.comments.length} comments
+                </div>
+              </div>
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: '#F8FAFC',
+                border: `1px solid ${COLORS.border}`,
+              }}>
+                <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Source
+                </div>
+                <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
+                  {importPreview.source || inputSource || 'Unknown'}
+                </div>
+              </div>
+              <div style={{
+                padding: '10px 12px',
+                borderRadius: 8,
+                background: '#F8FAFC',
+                border: `1px solid ${COLORS.border}`,
+              }}>
+                <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, textTransform: 'uppercase', marginBottom: 4 }}>
+                  Channel
+                </div>
+                <div style={{ fontSize: 16, color: COLORS.text, fontWeight: 900 }}>
+                  {importPreview.channel || inputChannel}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {importPreview?.comments.length > 0 && (
+            <div style={{
+              fontSize: 14,
+              lineHeight: 1.45,
+              color: COLORS.muted,
+              marginBottom: 10,
+              fontWeight: 700,
+            }}>
+              Names: {importPreview.comments.slice(0, 5).map(comment => comment.name).join(', ')}
+              {importPreview.comments.length > 5 ? ` +${importPreview.comments.length - 5} more` : ''}
+            </div>
+          )}
+
+          {importResult && (
+            <div style={{
+              padding: '11px 12px',
+              borderRadius: 8,
+              background: importResult.error ? '#FEF2F2' : '#ECFDF5',
+              border: `1px solid ${importResult.error ? '#FECACA' : '#BBF7D0'}`,
+              color: importResult.error ? COLORS.error : '#166534',
+              fontSize: 14,
+              fontWeight: 800,
+              lineHeight: 1.45,
+            }}>
+              {importResult.error || `Added ${importResult.added}, updated ${importResult.updated}, skipped ${importResult.skipped}.`}
+              {!importResult.error && importResult.updatedNames.length > 0 && (
+                <span> Updated: {importResult.updatedNames.slice(0, 5).join(', ')}.</span>
+              )}
+              {!importResult.error && importResult.addedNames.length > 0 && (
+                <span> New: {importResult.addedNames.slice(0, 5).join(', ')}.</span>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Add lead */}
         <div style={{
