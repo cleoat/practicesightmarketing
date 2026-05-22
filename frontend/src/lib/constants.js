@@ -1,5 +1,5 @@
 // Pipeline stages
-export const APP_BUILD_LABEL = 'Smart CRM import v1';
+export const APP_BUILD_LABEL = 'CRM psychology fix v1';
 
 export const STAGES = [
   { id: 'saw_it', label: 'Saw it', color: '#2563EB', desc: 'No pain yet' },

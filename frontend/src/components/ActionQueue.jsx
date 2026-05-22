@@ -22,9 +22,10 @@ function leadAction(lead) {
 }
 
 export function getActionStats(leads) {
-  const needsDraft = leads.filter(lead => !lead.reply).length;
-  const readyToPost = leads.filter(lead => lead.reply && !lead.posted).length;
-  const followUps = leads.filter(lead => lead.posted && !lead.followUps?.length && ['warm', 'hot', 'testing'].includes(lead.stage)).length;
+  const activeLeads = leads.filter(lead => lead.stage !== 'not_fit');
+  const needsDraft = activeLeads.filter(lead => !lead.reply).length;
+  const readyToPost = activeLeads.filter(lead => lead.reply && !lead.posted).length;
+  const followUps = activeLeads.filter(lead => lead.posted && !lead.followUps?.length && ['warm', 'hot', 'testing'].includes(lead.stage)).length;
   const wins = leads.filter(lead => lead.stage === 'feedback').length;
 
   return { needsDraft, readyToPost, followUps, wins };

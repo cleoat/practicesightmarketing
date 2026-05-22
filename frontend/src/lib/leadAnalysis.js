@@ -60,15 +60,29 @@ const OUTSOURCED_PATTERNS = [
   /\b(flat\s+rate|monthly\s+fee)\s+(for\s+)?(billing|claims)\b/,
 ];
 
+// ── PROCESS ADVICE — KNOWLEDGEABLE BUT NOT PAIN YET ────────────────
+const PROCESS_ADVICE_PATTERNS = [
+  /\b(run|pull|export|check|review|compare|match|reconcile|work)\s+(reports?|aging|a\/r|ar|claims|payments|deposits|eras|eobs)\b/,
+  /\b(claims submitted|claims paid|bank deposits|aging reports?|scheduled sessions|billed sessions|unpaid claims|denied claims)\b/,
+  /\b(month.?end|end.?of.?month)\s+(workflow|process|routine|review|reconciliation|reconcile)\b/,
+  /\b(routine|system|workflow|spreadsheet|dashboard|reporting|weekly reconciliation)\b/,
+  /\b(collection report|charge lag report|days in ar|a\/r aging|ar aging)\b/,
+  /\b(ehr reporting|clearinghouse platform|era\/eob|eras?|eobs?)\b/,
+];
+
+// ── DOES OWN BILLING — QUALIFY BEFORE PITCH ────────────────────────
+const OWN_BILLING_PATTERNS = [
+  /\b(i|we)\s+(do|handle|manage|run)\s+(my|our)\s+own\s+(billing|claims|insurance|insurance billing)\b/,
+  /\b(i|we)\s+(bill|submit claims|post payments|reconcile)\s+(my|our)\s*(own\s*)?(claims|payments|billing)?\b/,
+];
+
 // ── BILLING PAIN — IDEAL LEAD ───────────────────────────────────────
 const PAIN_PATTERNS = [
   /\b(struggling|stuck|confused|overwhelmed|behind|stressed|frustrated|annoyed|worried)\s+(with|about|by)\s+(billing|claims|insurance|payments|eras|eobs|reconcili)/,
   /\b(my|our)\s+(claims|billing|payments|eras|eobs)\s+(are|is|keep|keeps|got|get)\s+(stuck|denied|rejected|delayed|messy|overdue|unpaid|missing|lost)\b/,
   /\b(unbilled|uncollected|unfiled|unpaid insurance|aging claims|claim denial|outstanding balance|revenue gap|lost revenue|money on the table)\b/,
-  /\b(i|we)\s+(do|handle|manage|run)\s+(my|our)\s+own\s+(billing|claims|insurance|insurance billing)\b/,
-  /\b(i|we)\s+can'?t\s+(keep up with|figure out|track|reconcile|stay on top of)\b/,
-  /\b(month.?end|end.?of.?month)\s+(billing|review|reconcil|check|process)\b/,
-  /\bsimple\s*practice\s+(billing|reports|outstanding|claims)\b/,
+  /\b(i|we)\s+(can'?t|cannot)\s+(keep up with|figure out|track|reconcile|stay on top of)\b/,
+  /\bsimple\s*practice\s+(billing|reports|outstanding|claims).*\b(stuck|missing|denied|unpaid|wrong|confusing|reconcile|catch)\b/,
   /\b(how do you|does anyone|anyone else)\s+(track|manage|handle|check|review)\s+(billing|claims|insurance|eras|payments|denials)\b/,
   /\b(sessions?|appointments?)\s+(that\s+)?(went\s+)?(unbilled|unfiled|never\s+billed|slipped\s+through|fell\s+through)\b/,
   /\b(check|review|audit|catch)\s+(my|your|the|our)\s+(billing|claims|insurance|eras|denials|outstanding)\b/,
@@ -95,6 +109,7 @@ function classifyPersona(text) {
       leadType: 'billing_vendor',
       responseType: '🏢 Billing company / vendor',
       reason: 'They are offering billing help or describing billing work for multiple clients — not a therapist doing their own billing.',
+      nextMove: 'Do not pitch in public. Reply neutrally or skip unless the conversation moves private.',
       blocksWarm: true,
     };
   }
@@ -104,16 +119,18 @@ function classifyPersona(text) {
       leadType: 'outsourced_billing',
       responseType: '🔄 Billing outsourced',
       reason: 'Billing appears to be handled by a platform or third party, so they aren\'t the direct buyer — but may know someone who is.',
+      nextMove: 'Do not pitch. Ask what they still review themselves only if the thread is worth engaging.',
       blocksWarm: true,
     };
   }
 
   return {
     leadType: 'potential_practice',
-    responseType: '👤 Private practice therapist',
-    reason: '',
-    blocksWarm: false,
-  };
+      responseType: '👤 Private practice therapist',
+      reason: '',
+      nextMove: 'Qualify gently before pitching.',
+      blocksWarm: false,
+    };
 }
 
 export function analyzeLeadComment(comment) {
@@ -165,6 +182,29 @@ export function analyzeLeadComment(comment) {
       intent: 'billing_pain',
       stage: 'warm',
       reason: 'They describe their own billing, claim, payment, or reconciliation pain.',
+      nextMove: 'Validate the specific pain and offer PracticeSight only if the community allows it.',
+    };
+  }
+
+  if (hasAny(text, OWN_BILLING_PATTERNS)) {
+    return {
+      ...persona,
+      intent: 'own_billing_no_pain',
+      stage: 'engaged',
+      reason: 'They appear to do their own billing, but have not named a concrete pain point yet.',
+      nextMove: 'Ask what they worry might slip through before mentioning PracticeSight.',
+    };
+  }
+
+  if (hasAny(text, PROCESS_ADVICE_PATTERNS)) {
+    return {
+      leadType: 'process_advice',
+      responseType: '🧭 Process advice / possible peer',
+      intent: 'process_advice',
+      stage: 'engaged',
+      reason: 'They gave billing workflow advice, not evidence that they personally have the pain.',
+      blocksWarm: false,
+      nextMove: 'Use their workflow to ask a pain-finding question about what still slips through.',
     };
   }
 
@@ -174,6 +214,7 @@ export function analyzeLeadComment(comment) {
       intent: 'question',
       stage: 'engaged',
       reason: 'They are asking a question but haven\'t shown clear billing pain yet.',
+      nextMove: 'Answer briefly, then ask one question that reveals whether they do their own billing.',
     };
   }
 
@@ -182,5 +223,6 @@ export function analyzeLeadComment(comment) {
     intent: 'low_signal',
     stage: 'saw_it',
     reason: 'No clear intent or billing pain detected yet.',
+    nextMove: 'Do not pitch. Ask one light qualifying question or skip.',
   };
 }

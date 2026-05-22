@@ -9,6 +9,7 @@ import { analyzeLeadComment } from './lib/leadAnalysis';
 import { inferChannelFromText } from './lib/communityRules';
 import { importCopiedThread, parseCopiedThread } from './lib/threadImport';
 import { appendConversationMessage, formatConversationDate } from './lib/conversation';
+import { mergeDuplicateLeads } from './lib/leadMerge';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
@@ -33,7 +34,7 @@ function App() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    setLeadsState(getLeads());
+    setLeadsState(mergeDuplicateLeads(getLeads()).leads);
     setSettingsState(getSettings());
     setRedditStatsState(resetDailyStats());
     setLoaded(true);
@@ -94,9 +95,10 @@ function App() {
       return;
     }
 
-    setLeadsState(result.leads);
-    setImportResult(result);
-    setMsg(`Added ${result.added} leads, updated ${result.updated}, skipped ${result.skipped}`);
+    const merged = mergeDuplicateLeads(result.leads);
+    setLeadsState(merged.leads);
+    setImportResult({ ...result, duplicateLeadsMerged: merged.removed });
+    setMsg(`Added ${result.added} leads, updated ${result.updated}, skipped ${result.skipped}${merged.removed ? `, merged ${merged.removed} duplicates` : ''}`);
     setTimeout(() => setMsg(''), 2200);
   }
 
@@ -478,6 +480,7 @@ function App() {
                   {' '}Added {importResult.added} new leads.
                   {' '}Added {importResult.updated} new comments to existing leads.
                   {' '}Skipped {importResult.skipped} already-saved comments.
+                  {importResult.duplicateLeadsMerged ? ` Merged ${importResult.duplicateLeadsMerged} duplicate lead cards.` : ''}
                   {importResult.threadMatched ? ` Matched ${importResult.matched} existing leads in this same thread.` : ''}
                 </span>
               )}

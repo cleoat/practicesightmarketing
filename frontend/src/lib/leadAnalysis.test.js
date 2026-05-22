@@ -32,6 +32,24 @@ describe('analyzeLeadComment', () => {
     expect(result.intent).toBe('billing_pain');
   });
 
+  it('classifies own billing without pain as engaged, not warm', () => {
+    const result = analyzeLeadComment('I do my own billing in SimplePractice and reconcile every Friday.');
+
+    expect(result.stage).toBe('engaged');
+    expect(result.leadType).toBe('potential_practice');
+    expect(result.intent).toBe('own_billing_no_pain');
+  });
+
+  it('classifies workflow advice as process advice, not pain', () => {
+    const result = analyzeLeadComment(
+      'Most people develop a monthly reconciliation system. Compare claims submitted against claims paid, match ERA/EOB to bank deposits, and review aging reports.'
+    );
+
+    expect(result.stage).toBe('engaged');
+    expect(result.leadType).toBe('process_advice');
+    expect(result.intent).toBe('process_advice');
+  });
+
   it('classifies outsourced platform users as not fit', () => {
     const result = analyzeLeadComment('Alma handles my billing, so I never really touch claims.');
 

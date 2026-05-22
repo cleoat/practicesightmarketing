@@ -24,6 +24,11 @@ const LEAD_TYPE_META = {
     color: '#D97706', bg: '#FFFBEB', border: '#FDE68A',
     action: 'Generate Neutral Reply',
   },
+  process_advice: {
+    icon: '🧭', label: 'Process advice / possible peer',
+    color: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE',
+    action: 'Generate Pain-Finding Reply',
+  },
   potential_practice: {
     icon: '👤', label: 'Private practice therapist',
     color: '#059669', bg: '#F0FDF4', border: '#B8E5C8',
@@ -55,7 +60,7 @@ const FAST_REPLY_MODELS = [
 
 const SYSTEM_PERSONA = `You are Leonardo, a therapist in private practice. You write like a helpful colleague, not a marketer. Short, warm, direct, no hype, no exclamation marks. PracticeSight is a small free SimplePractice billing checker you built; mention it only when it fits.`;
 
-function buildPrompt({ comment, name, stage, leadType, communityRule, variationNum, conversationContext }) {
+function buildPrompt({ comment, name, stage, leadType, intent, communityRule, variationNum, conversationContext }) {
   const strict = communityRule?.strict;
   const canMention = communityRule?.canMentionProduct && ['warm','hot','testing','gave_feedback'].includes(stage);
   const isPrivateChannel = ['dm', 'whatsapp'].includes(communityRule?.platform);
@@ -91,6 +96,24 @@ ${context}${name} has billing outsourced. Latest message:
 Write reply #${variation}. Under 35 words. Do not mention PracticeSight, referrals, links, or DMs. Acknowledge they may not need to track this closely and ask one neutral question about what they still review themselves. Reply only.`;
   }
 
+  if (leadType === 'process_advice') {
+    return `${SYSTEM_PERSONA}
+
+${context}${name} gave billing workflow advice. Latest message:
+"${comment}"
+
+Do not pitch PracticeSight yet. Write reply #${variation}. Under 45 words. Reflect one specific workflow detail, then ask a pain-finding question that exposes hidden risk: missed sessions, unpaid claims, deposit mismatch, or aging claims. Reply only.`;
+  }
+
+  if (intent === 'own_billing_no_pain') {
+    return `${SYSTEM_PERSONA}
+
+${context}${name} appears to do their own billing but has not named a pain yet. Latest message:
+"${comment}"
+
+Do not pitch PracticeSight yet. Write reply #${variation}. Under 45 words. Ask what they trust least in their current review: unbilled sessions, unpaid claims, payment posting, or deposits matching. Reply only.`;
+  }
+
   if (['cold','saw_it'].includes(stage) || strict) {
     return `${SYSTEM_PERSONA}
 
@@ -98,7 +121,7 @@ ${context}${communityRule?.source || 'This community'} is strict/no-promotion. D
 ${name}'s latest message:
 "${comment}"
 
-Write reply #${variation}. Mirror one specific thing they said, then ask one natural follow-up question. Under 45 words. Reply only.`;
+Write reply #${variation}. Mirror one specific thing they said, then ask one low-pressure qualifying question about whether they do their own billing or what they worry might slip through. Under 45 words. Reply only.`;
   }
 
   if (stage === 'engaged') {
@@ -154,11 +177,11 @@ ${context}${name}'s latest message:
 Mirror one specific thing and ask one useful follow-up question. Under 45 words. Reply only.`;
 }
 
-async function generateReply(comment, name, apiKey, source, channel, stage, leadType, variationNum, preferredModel, conversationContext) {
+async function generateReply(comment, name, apiKey, source, channel, stage, leadType, intent, variationNum, preferredModel, conversationContext) {
   const communityRule = getCommunityRule(source, channel, COMMUNITIES);
 
   const prompt = buildPrompt({
-    comment, name, stage, leadType,
+    comment, name, stage, leadType, intent,
     communityRule, variationNum, conversationContext
   });
 
@@ -250,6 +273,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         activeComment, lead.name, apiKey,
         lead.source, lead.ch, lead.stage,
         leadType,
+        liveAnalysis.intent,
         nextVariation, preferredModel,
         conversationPromptContext(lead)
       );
@@ -437,6 +461,11 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
             )}
           </div>
           {liveAnalysis.reason && <div style={{ fontSize: 11, color: '#555', lineHeight: 1.4 }}>{liveAnalysis.reason}</div>}
+          {liveAnalysis.nextMove && (
+            <div style={{ fontSize: 11, color: typeMeta.color, lineHeight: 1.4, marginTop: 4, fontWeight: 800 }}>
+              Next move: {liveAnalysis.nextMove}
+            </div>
+          )}
         </div>
 
         {/* Community rule hint */}
