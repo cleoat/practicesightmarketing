@@ -315,6 +315,14 @@ describe('importCopiedThread', () => {
     expect(david.source).toBe('Mental Health Billing Support');
     expect(david.postAuthor).toBe('Leonardo Aguilar');
     expect(david.stage).toBe('not_fit');
+    expect(david.conversation).toEqual([
+      {
+        id: `${new Date('2026-05-21T12:00:00Z').getTime() + 9}-lead-0`,
+        role: 'lead',
+        text: 'Send me text. I will let you know all the process and also share you information how itself work',
+        at: 'May 21, 2026',
+      },
+    ]);
   });
 
   it('skips exact duplicates and appends new comments to existing lead history', () => {
@@ -347,5 +355,6 @@ Comment as Leonardo
     expect(second.updated).toBe(1);
     expect(second.skipped).toBe(1);
     expect(jethro.followUps).toContain('I also check unpaid claims weekly before month end.');
+    expect(jethro.conversation.map(message => message.text)).toContain('I also check unpaid claims weekly before month end.');
   });
 });

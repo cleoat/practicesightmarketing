@@ -8,6 +8,7 @@ import { PostTemplatesPanel } from './components/PostTemplatesPanel';
 import { analyzeLeadComment } from './lib/leadAnalysis';
 import { inferChannelFromText } from './lib/communityRules';
 import { importCopiedThread, parseCopiedThread } from './lib/threadImport';
+import { appendConversationMessage, formatConversationDate } from './lib/conversation';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
@@ -124,6 +125,8 @@ function App() {
     }
 
     const analysis = analyzeLeadComment(comment);
+    const now = Date.now();
+    const date = formatConversationDate(now);
     const newLead = {
       ...DEFAULT_LEAD,
       name,
@@ -136,7 +139,14 @@ function App() {
       ch: inputChannel,
       source: inputSource.trim(),
       threadUrl: inputThreadUrl.trim(),
-      id: Date.now()
+      id: now,
+      date,
+      conversation: [{
+        id: `${now}-lead-0`,
+        role: 'lead',
+        text: comment,
+        at: date,
+      }]
     };
     setLeadsState([newLead, ...leads]);
     setInputName('');
@@ -154,12 +164,46 @@ function App() {
     setLeadsState(leads.filter(l => l.id !== id));
   }
 
+  function stageScore(stage) {
+    return {
+      saw_it: 1,
+      engaged: 2,
+      warm: 3,
+      hot: 4,
+      testing: 5,
+      feedback: 6,
+      not_fit: 0,
+    }[stage] || 0;
+  }
+
+  function nextConversationStage(currentStage, incomingStage) {
+    if (incomingStage === 'not_fit') return 'not_fit';
+    if (currentStage === 'not_fit') return currentStage;
+    return stageScore(incomingStage) > stageScore(currentStage) ? incomingStage : currentStage;
+  }
+
   function handleReply(id, followUpText) {
-    if (!followUpText.trim()) return;
+    const text = followUpText.trim();
+    if (!text) return;
     const lead = leads.find(l => l.id === id);
-    const followUps = [...(lead?.followUps || []), followUpText.trim()];
-    handleUpdateLead(id, { followUps });
-    setMsg('✓ Follow-up logged');
+    if (!lead) return;
+
+    const analysis = analyzeLeadComment(text);
+    const conversation = appendConversationMessage(lead, 'lead', text);
+    const followUps = [...(lead.followUps || []), text];
+    handleUpdateLead(id, {
+      conversation,
+      followUps,
+      comment: text,
+      stage: nextConversationStage(lead.stage, analysis.stage),
+      leadType: analysis.leadType,
+      responseType: analysis.responseType,
+      intent: analysis.intent,
+      analysisReason: analysis.reason,
+      reply: '',
+      replyApproved: false,
+    });
+    setMsg('Saved their response');
     setTimeout(() => setMsg(''), 1500);
   }
 

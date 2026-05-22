@@ -49,7 +49,7 @@ describe('CHANNELS', () => {
 
 describe('DEFAULT_LEAD', () => {
   it('has all required fields', () => {
-    ['name', 'ch', 'comment', 'stage', 'reply', 'followUps', 'posted', 'postUrl'].forEach(key => {
+    ['name', 'ch', 'comment', 'stage', 'reply', 'replyApproved', 'followUps', 'conversation', 'posted', 'postUrl'].forEach(key => {
       expect(DEFAULT_LEAD).toHaveProperty(key);
     });
   });
@@ -65,6 +65,11 @@ describe('DEFAULT_LEAD', () => {
   it('followUps defaults to empty array', () => {
     expect(Array.isArray(DEFAULT_LEAD.followUps)).toBe(true);
     expect(DEFAULT_LEAD.followUps).toHaveLength(0);
+  });
+
+  it('conversation defaults to empty array', () => {
+    expect(Array.isArray(DEFAULT_LEAD.conversation)).toBe(true);
+    expect(DEFAULT_LEAD.conversation).toHaveLength(0);
   });
 });
 

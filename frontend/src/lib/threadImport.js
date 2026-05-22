@@ -1,5 +1,6 @@
 import { DEFAULT_LEAD } from './constants';
 import { analyzeLeadComment } from './leadAnalysis';
+import { appendConversationMessage } from './conversation';
 
 const ACTION_LINES = new Set([
   'like',
@@ -350,10 +351,16 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
       }
 
       const followUps = [...(existing.followUps || []), incoming.comment];
+      const conversation = appendConversationMessage(existing, 'lead', incoming.comment, {
+        at: importedAt,
+        now: now + index,
+      });
       const existingIndex = nextLeads.findIndex(lead => lead === existing);
       nextLeads[existingIndex] = {
         ...existing,
         followUps,
+        conversation,
+        comment: incoming.comment,
         stage: mergedStage(existing.stage, analysis.stage),
         leadType: analysis.leadType,
         responseType: analysis.responseType,
@@ -388,6 +395,12 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
       postAuthor: parsed.postAuthor || '',
       postText: parsed.postText || '',
       importedAt,
+      conversation: [{
+        id: `${now + index}-lead-0`,
+        role: 'lead',
+        text: incoming.comment,
+        at: importedAt,
+      }],
     });
     added += 1;
     addedNames.push(incoming.name);

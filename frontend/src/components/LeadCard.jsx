@@ -1,8 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { STAGES, CHANNELS, COLORS } from '../lib/constants';
 import { chatCompletion } from '../lib/openrouter';
-import { communityToneGuidance, formatCommunityForPrompt, getCommunityRule } from '../lib/communityRules';
+import { getCommunityRule } from '../lib/communityRules';
 import { analyzeLeadComment } from '../lib/leadAnalysis';
+import {
+  appendConversationMessage,
+  conversationForLead,
+  conversationPromptContext,
+  formatConversationDate,
+  latestLeadMessage,
+} from '../lib/conversation';
 import { COMMUNITIES } from './CommunitiesPanel';
 
 // ── LEAD TYPE META ───────────────────────────────────────────────────────────
@@ -38,196 +45,118 @@ const LEAD_TYPE_META = {
   not_fit         → Referral ask. Warm, no pitch.
 */
 
-const SYSTEM_PERSONA = `You are a licensed therapist in private practice. You are NOT a marketer, founder, or salesperson. You talk to colleagues the way therapists talk to each other — warm, direct, no agenda visible.
+const FAST_REPLY_MODELS = [
+  'meta-llama/llama-3.2-3b-instruct:free',
+  'openai/gpt-oss-20b:free',
+  'google/gemma-4-31b-it:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'openai/gpt-oss-120b:free',
+];
 
-You happen to have built a small free tool called PracticeSight (practicesight.pages.dev) that checks billing in SimplePractice. You built it for yourself and colleagues. You mention it the way you'd mention anything useful — briefly, naturally, only when it fits.
+const SYSTEM_PERSONA = `You are Leonardo, a therapist in private practice. You write like a helpful colleague, not a marketer. Short, warm, direct, no hype, no exclamation marks. PracticeSight is a small free SimplePractice billing checker you built; mention it only when it fits.`;
 
-VOICE RULES — always:
-- Short. 2-4 sentences max.
-- No exclamation marks ever.
-- No "I hope this helps" or "Great question" or "That's interesting."
-- No corporate language.
-- Specific beats generic — use their exact words back to them.
-- Sound like a text message from a colleague, not a LinkedIn post.`;
-
-function buildPrompt({ comment, name, stage, leadType, communityRule, variationNum, intent }) {
+function buildPrompt({ comment, name, stage, leadType, communityRule, variationNum, conversationContext }) {
   const strict = communityRule?.strict;
   const canMention = communityRule?.canMentionProduct && ['warm','hot','testing','gave_feedback'].includes(stage);
   const variation = variationNum || 1;
-
-  // ── REFERRAL ASKS ────────────────────────────────────────────────────────
+  const context = conversationContext
+    ? `Conversation so far:\n${conversationContext}\n\n`
+    : '';
 
   if (leadType === 'billing_vendor') {
     return `${SYSTEM_PERSONA}
 
-This person appears to be a billing company or service provider. They wrote:
+${context}${name} appears to be a billing company or service provider. Latest message:
 "${comment}"
 
-Write a single reply (under 35 words) that:
-1. Acknowledges what they do in one phrase
-2. Mentions you made a simple free billing checker for therapists using SimplePractice — asks if any of their therapist clients might find it useful
-3. Zero pitch. Zero pressure. Sounds like a curious colleague.
-
-Reply only. No labels. No preamble.`;
+Write reply #${variation}. Under 35 words. Acknowledge what they do, then ask if any therapist clients who do their own SimplePractice billing might find a free checker useful. Reply only.`;
   }
 
   if (leadType === 'outsourced_billing') {
     return `${SYSTEM_PERSONA}
 
-This person has billing outsourced. They wrote:
+${context}${name} has billing outsourced. Latest message:
 "${comment}"
 
-Write a single reply (under 35 words) that:
-1. Acknowledges billing outsourced = they don't need this
-2. Casually asks if they know any colleagues who do their own billing in SimplePractice — that's who you built it for
-3. Sounds like a fellow therapist making conversation, not a vendor prospecting.
-
-Reply only. No labels. No preamble.`;
+Write reply #${variation}. Under 35 words. Acknowledge they may not need this, then casually ask if they know colleagues doing their own SimplePractice billing. Reply only.`;
   }
 
-  // ── FUNNEL STAGE PROMPTS ─────────────────────────────────────────────────
-
-  // COLD / SAW_IT — pure peer, no product, build trust
   if (['cold','saw_it'].includes(stage) || strict) {
     return `${SYSTEM_PERSONA}
 
-Platform: ${communityRule?.source || 'Reddit'} — strict no-promotion community. Never mention any product, app, tool, or company.
-
-${name} wrote:
+${context}${communityRule?.source || 'This community'} is strict/no-promotion. Do not mention PracticeSight or any tool.
+${name}'s latest message:
 "${comment}"
 
-Write reply #${variation} of 4. Each variation opens differently.
-
-Your goal: make them feel heard and keep the conversation going.
-
-Formula:
-1. Mirror what they said in 1 short sentence (use their exact words or close paraphrase)
-2. Ask ONE follow-up question that goes one level deeper into their actual situation
-
-Examples of good mirrors:
-- They said "I just hope it works out" → you say "That background hope that nothing slipped through is exhausting."
-- They said "I check weekly" → you say "Weekly checks are more than most people do."
-
-Examples of bad mirrors (don't do these):
-- "I completely understand where you're coming from" (generic)
-- "That makes total sense" (filler)
-- Starting with "I" (too self-focused)
-
-The question should feel genuinely curious, not like a setup.
-
-Reply only. No labels. Under 55 words.`;
+Write reply #${variation}. Mirror one specific thing they said, then ask one natural follow-up question. Under 45 words. Reply only.`;
   }
 
-  // ENGAGED — digging deeper, still no product unless warm
   if (stage === 'engaged') {
     return `${SYSTEM_PERSONA}
 
-${name} is engaging back. They wrote:
+${context}${name} is engaging back. Latest message:
 "${comment}"
 
-You're 2-3 exchanges in. They're curious. Keep digging into their specific situation.
-
-Write a reply that:
-1. Picks up on ONE specific thing they said and reflects it back precisely
-2. Asks the question that gets to the real pain: what does their actual review process look like, what do they do when something feels off, what would it mean if something slipped through
-3. Stays conversational — like you're genuinely curious, not interviewing them
-
-${canMention ? 'You may now briefly mention PracticeSight only if it flows completely naturally from what they said. If it would feel like a pivot, stay in peer mode.' : 'Do NOT mention any product yet.'}
-
-Reply only. Under 60 words.`;
+Write reply #${variation}. Reflect one specific thing and ask what their actual review/checking process looks like. ${canMention ? 'You may mention PracticeSight only if it flows naturally.' : 'Do not mention PracticeSight yet.'} Under 50 words. Reply only.`;
   }
 
-  // WARM — validation + natural product mention
   if (stage === 'warm' && canMention) {
     return `${SYSTEM_PERSONA}
 
-${name} has expressed real billing pain or anxiety. They wrote:
+${context}${name} has real billing pain. Latest message:
 "${comment}"
 
-This is the moment. They described the exact problem PracticeSight solves.
-
-Write a reply that:
-1. Opens by validating their specific pain in 1 sentence — use their words
-2. Transitions naturally: "I actually built something for exactly this" — ONE sentence, not a pitch
-3. Says what it does in ONE specific sentence: "You export your SimplePractice reports, drag them in, and it shows exactly what needs attention — specific report, specific row."
-4. Ends with a soft pull: "Would you want to try it?" or "practicesight.pages.dev if you're curious."
-
-The tone is: colleague sharing something useful, not founder pitching.
-No features list. No adjectives like "powerful" or "amazing."
-Under 70 words.`;
+Write reply #${variation}. Validate the specific pain, then naturally mention you built PracticeSight for this: export SimplePractice reports, drag them in, see what needs attention. Soft invite. Under 60 words. Reply only.`;
   }
 
-  // HOT — they want to try it, remove all friction
   if (stage === 'hot') {
     return `${SYSTEM_PERSONA}
 
-${name} wants to try it or asked how. They wrote:
+${context}${name} wants to try it or asked how. Latest message:
 "${comment}"
 
-Remove all friction. One clear path.
-
-Write a reply that:
-1. Opens warmly — 1 sentence acknowledging their interest without overselling it
-2. Gives the URL: practicesight.pages.dev
-3. One sentence on what to do: "Export your billing reports from SimplePractice as CSVs — it walks you through which ones."
-4. Optional: "Let me know what it finds" — makes them feel like there's a real person on the other end
-
-Under 55 words. No hype. No adjectives.`;
+Give the URL practicesight.pages.dev and one clear next step: export the SimplePractice billing reports as CSVs and it walks them through which ones. Under 45 words. Reply only.`;
   }
 
-  // TESTING — they're in it, encourage + ask
   if (stage === 'testing') {
     return `${SYSTEM_PERSONA}
 
-${name} is currently testing PracticeSight. They wrote:
+${context}${name} is testing PracticeSight. Latest message:
 "${comment}"
 
-Write a reply that:
-1. Acknowledges where they are in the process warmly
-2. Asks one specific question: what did it find? or was anything confusing?
-3. Makes them feel like their feedback genuinely matters to you
-
-Under 45 words. Casual. Like a text.`;
+Acknowledge where they are and ask one specific question: what did it find, or was anything confusing? Under 40 words. Reply only.`;
   }
 
-  // GAVE_FEEDBACK — close the loop
   if (stage === 'gave_feedback') {
     return `${SYSTEM_PERSONA}
 
-${name} tested PracticeSight and gave feedback. They wrote:
+${context}${name} gave feedback. Latest message:
 "${comment}"
 
-Write a reply that:
-1. Thanks them genuinely — 1 sentence, specific to what they said
-2. Asks the 3 feedback questions naturally (not as a numbered list):
-   - Did it find anything you didn't already know about?
-   - Was anything confusing?
-   - Did it miss something you expected it to catch?
-
-Under 60 words. Warm but direct.`;
+Thank them specifically, then ask naturally: did it find anything new, was anything confusing, did it miss something expected? Under 55 words. Reply only.`;
   }
 
-  // DEFAULT fallback
   return `${SYSTEM_PERSONA}
 
-${name} wrote:
+${context}${name}'s latest message:
 "${comment}"
 
-Write a warm, curious reply that mirrors what they said and asks one follow-up question.
-Under 50 words. No product mention.`;
+Mirror one specific thing and ask one useful follow-up question. Under 45 words. Reply only.`;
 }
 
-async function generateReply(comment, name, apiKey, source, channel, stage, leadType, intent, variationNum, preferredModel) {
+async function generateReply(comment, name, apiKey, source, channel, stage, leadType, variationNum, preferredModel, conversationContext) {
   const communityRule = getCommunityRule(source, channel, COMMUNITIES);
 
   const prompt = buildPrompt({
     comment, name, stage, leadType,
-    communityRule, variationNum, intent
+    communityRule, variationNum, conversationContext
   });
 
   const result = await chatCompletion({
     apiKey,
-    maxTokens: 250,
+    maxTokens: 120,
+    temperature: 0.45,
+    models: FAST_REPLY_MODELS,
     preferredModel,
     messages: [{ role: 'user', content: prompt }]
   });
@@ -274,14 +203,22 @@ function getPostAction(ch, threadUrl, reply) {
 export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiKey, preferredModel }) {
   const [generating, setGenerating] = useState(false);
   const [generatedReply, setGeneratedReply] = useState(lead.reply || '');
-  const [posted, setPosted] = useState(false);
   const [variationNum, setVariationNum] = useState(1);
   const [showFollowUp, setShowFollowUp] = useState(false);
   const [followUpText, setFollowUpText] = useState('');
 
+  useEffect(() => {
+    setGeneratedReply(lead.reply || '');
+  }, [lead.id, lead.reply]);
+
+  const conversation = conversationForLead(lead);
+  const latestLead = latestLeadMessage(lead);
+  const activeComment = latestLead?.text || lead.comment || '';
+  const replyIsError = /^Error:/i.test(generatedReply);
+  const approvedReplySaved = Boolean(lead.replyApproved && generatedReply && lead.lastApprovedReply === generatedReply);
   const communityRule = getCommunityRule(lead.source, lead.ch, COMMUNITIES);
   const strict = communityRule.strict;
-  const liveAnalysis = analyzeLeadComment(lead.comment);
+  const liveAnalysis = analyzeLeadComment(activeComment);
   const leadType = liveAnalysis.leadType;
   const typeMeta = LEAD_TYPE_META[leadType] || LEAD_TYPE_META.potential_practice;
   const stage = STAGES.find(s => s.id === lead.stage);
@@ -300,23 +237,52 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setGenerating(true);
     try {
       const reply = await generateReply(
-        lead.comment, lead.name, apiKey,
+        activeComment, lead.name, apiKey,
         lead.source, lead.ch, lead.stage,
-        leadType, liveAnalysis.intent,
-        nextVariation, preferredModel
+        leadType,
+        nextVariation, preferredModel,
+        conversationPromptContext(lead)
       );
       setGeneratedReply(reply);
-      onUpdate(lead.id, { reply });
+      onUpdate(lead.id, { reply, replyApproved: false });
     } catch (e) {
       setGeneratedReply(`Error: ${e.message || 'Check your API key in Settings.'}`);
     }
     setGenerating(false);
   };
 
+  const handleDraftChange = (value) => {
+    setGeneratedReply(value);
+    onUpdate(lead.id, {
+      reply: value,
+      replyApproved: false,
+    });
+  };
+
+  const handleApproveReply = () => {
+    const reply = generatedReply.trim();
+    if (!reply || replyIsError) return false;
+
+    const now = Date.now();
+    const at = formatConversationDate(now);
+    const conversationWithReply = appendConversationMessage(lead, 'me', reply, { now, at });
+
+    onUpdate(lead.id, {
+      conversation: conversationWithReply,
+      reply,
+      replyApproved: true,
+      lastApprovedReply: reply,
+      lastApprovedAt: at,
+    });
+
+    navigator.clipboard?.writeText(reply);
+    return true;
+  };
+
   const handlePost = () => {
-    const { action } = getPostAction(lead.ch, lead.threadUrl, generatedReply);
+    if (!handleApproveReply()) return;
+    const { action } = getPostAction(lead.ch, lead.threadUrl, generatedReply.trim());
     action();
-    setPosted(true);
   };
 
   const handleFollowUp = () => {
@@ -326,12 +292,12 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
     setShowFollowUp(false);
   };
 
-  const postAction = generatedReply ? getPostAction(lead.ch, lead.threadUrl, generatedReply) : null;
+  const postAction = generatedReply && !replyIsError ? getPostAction(lead.ch, lead.threadUrl, generatedReply) : null;
 
-  const btnLabel = generating ? '⏳ Generating...'
-    : typeMeta.action ? (generatedReply ? `↻ New ${typeMeta.action}` : `✓ ${typeMeta.action}`)
-    : generatedReply ? '↻ Different reply'
-    : '✨ Generate reply';
+  const btnLabel = generating ? 'Generating...'
+    : typeMeta.action ? (generatedReply ? `New ${typeMeta.action}` : typeMeta.action)
+    : generatedReply ? 'Generate faster remix'
+    : 'Generate fast reply';
 
   const btnColor = generating ? '#9CA3AF'
     : leadType === 'billing_vendor' ? '#DC2626'
@@ -377,13 +343,64 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
       {/* Body */}
       <div style={{ padding: 14 }}>
 
-        {/* Their comment */}
+        {/* Latest lead message */}
         <div style={{
           background: COLORS.bg, padding: 12, borderRadius: 8, marginBottom: 12,
           fontSize: 14, color: COLORS.text, lineHeight: 1.55, fontStyle: 'italic'
         }}>
-          "{lead.comment.slice(0, 150)}{lead.comment.length > 150 ? '...' : ''}"
+          "{activeComment.slice(0, 180)}{activeComment.length > 180 ? '...' : ''}"
         </div>
+
+        {conversation.length > 0 && (
+          <div style={{
+            marginBottom: 12,
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 8,
+            overflow: 'hidden',
+            background: '#fff',
+          }}>
+            <div style={{
+              padding: '8px 10px',
+              background: '#F8FAFC',
+              borderBottom: `1px solid ${COLORS.border}`,
+              fontSize: 12,
+              fontWeight: 900,
+              color: COLORS.muted,
+              textTransform: 'uppercase',
+            }}>
+              Conversation thread
+            </div>
+            <div style={{ padding: 10, display: 'grid', gap: 8, maxHeight: 260, overflowY: 'auto' }}>
+              {conversation.map((message) => {
+                const isMe = message.role === 'me';
+                return (
+                  <div key={message.id} style={{
+                    padding: '8px 10px',
+                    borderRadius: 8,
+                    background: isMe ? '#EFF6FF' : COLORS.bg,
+                    border: `1px solid ${isMe ? '#BFDBFE' : COLORS.border}`,
+                    color: COLORS.text,
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      marginBottom: 4,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: isMe ? COLORS.secondary : COLORS.muted,
+                      textTransform: 'uppercase',
+                    }}>
+                      <span>{isMe ? 'You replied' : `${lead.name} wrote`}</span>
+                      {message.at && <span style={{ textTransform: 'none', color: COLORS.muted }}>{message.at}</span>}
+                    </div>
+                    <div style={{ fontSize: 13, lineHeight: 1.45 }}>{message.text}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Stage */}
         <select value={lead.stage} onChange={handleStageChange} style={{
@@ -440,16 +457,50 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         {/* Generated reply */}
         {generatedReply && (
           <div style={{ marginBottom: 8 }}>
-            <div
-              onClick={() => navigator.clipboard.writeText(generatedReply)}
-              title="Click to copy"
+            <textarea
+              value={generatedReply}
+              onChange={(e) => handleDraftChange(e.target.value)}
+              rows={4}
               style={{
+                width: '100%',
                 background: '#F0FDF4', border: '1px solid #B8E5C8',
                 borderRadius: 8, padding: 12, fontSize: 14, lineHeight: 1.6,
-                color: '#166534', marginBottom: 8, cursor: 'copy', userSelect: 'all'
+                color: '#166534', marginBottom: 8, boxSizing: 'border-box',
+                fontFamily: 'inherit', resize: 'vertical'
               }}
-            >
-              {generatedReply}
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8, marginBottom: 8 }}>
+              <button onClick={handleApproveReply} disabled={replyIsError} style={{
+                padding: '11px 12px',
+                background: replyIsError ? '#9CA3AF' : approvedReplySaved ? COLORS.success : COLORS.primary,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                cursor: replyIsError ? 'not-allowed' : 'pointer',
+                fontSize: 14,
+                fontWeight: 900,
+                fontFamily: 'inherit'
+              }}>
+                {approvedReplySaved ? 'Approved & logged' : 'Approve & log'}
+              </button>
+
+              <button
+                onClick={() => navigator.clipboard?.writeText(generatedReply)}
+                style={{
+                  padding: '11px 12px',
+                  background: '#fff',
+                  color: COLORS.secondary,
+                  border: `1px solid ${COLORS.secondary}`,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 900,
+                  fontFamily: 'inherit'
+                }}
+              >
+                Copy draft
+              </button>
             </div>
 
             {postAction && (
@@ -460,18 +511,18 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
                 fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2
               }}>
                 <span>{postAction.label}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.86 }}>{postAction.sublabel}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, opacity: 0.86 }}>Approves, copies, and opens the thread</span>
               </button>
             )}
 
             {!lead.posted ? (
               <button onClick={onMarkPosted ? () => onMarkPosted(lead.id) : null} style={{
                 width: '100%', padding: 10,
-                background: posted ? COLORS.success + '22' : '#fff',
+                background: '#fff',
                 color: COLORS.success, border: `1px solid ${COLORS.success}`,
                 borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 800
               }}>
-                {posted ? '✓ Mark as Posted (confirm)' : '✓ Mark as Posted'}
+                Mark as Posted
               </button>
             ) : (
               <div style={{ textAlign: 'center', fontSize: 14, color: COLORS.success, fontWeight: 800, padding: 6 }}>✓ Posted</div>
@@ -479,23 +530,29 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
           </div>
         )}
 
-        {/* Follow-up log */}
+        {/* Next response log */}
         <button onClick={() => setShowFollowUp(!showFollowUp)} style={{
           width: '100%', padding: '9px 10px', marginTop: 6,
-          background: 'transparent', color: COLORS.muted,
+          background: approvedReplySaved ? '#F0FDF4' : 'transparent',
+          color: approvedReplySaved ? COLORS.success : COLORS.muted,
           border: `1px solid ${COLORS.border}`, borderRadius: 6,
           cursor: 'pointer', fontSize: 14, fontWeight: 800
         }}>
-          {showFollowUp ? '↺ Hide' : `+ Log follow-up${lead.followUps?.length ? ` (${lead.followUps.length})` : ''}`}
+          {showFollowUp ? 'Hide response box' : 'Add their response'}
         </button>
 
         {showFollowUp && (
           <div style={{ marginTop: 8 }}>
+            {approvedReplySaved && (
+              <div style={{ fontSize: 12, color: COLORS.success, fontWeight: 800, marginBottom: 6 }}>
+                Your approved reply is in the thread. Paste what they say next here.
+              </div>
+            )}
             <textarea
               value={followUpText}
               onChange={(e) => setFollowUpText(e.target.value)}
-              placeholder="Paste their next comment or reply..."
-              rows={2}
+              placeholder="Paste their next response..."
+              rows={3}
               style={{
                 width: '100%', padding: 10, border: `1px solid ${COLORS.border}`,
                 borderRadius: 8, fontSize: 14, fontFamily: 'inherit',
@@ -506,21 +563,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
               width: '100%', padding: 10, background: COLORS.secondary,
               color: '#fff', border: 'none', borderRadius: 6,
               cursor: 'pointer', fontSize: 14, fontWeight: 800
-            }}>Save follow-up</button>
-          </div>
-        )}
-
-        {lead.followUps && lead.followUps.length > 0 && !showFollowUp && (
-          <div style={{ marginTop: 8 }}>
-            {lead.followUps.map((fu, i) => (
-              <div key={i} style={{
-                background: COLORS.bg, padding: '5px 8px', borderRadius: 4,
-                marginBottom: 4, fontSize: 13, color: COLORS.text, fontStyle: 'italic',
-                borderLeft: `2px solid ${COLORS.secondary}`
-              }}>
-                "{fu.slice(0, 90)}{fu.length > 90 ? '...' : ''}"
-              </div>
-            ))}
+            }}>Save response & continue</button>
           </div>
         )}
       </div>
