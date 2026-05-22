@@ -49,7 +49,7 @@ describe('CHANNELS', () => {
 
 describe('DEFAULT_LEAD', () => {
   it('has all required fields', () => {
-    ['name', 'ch', 'comment', 'stage', 'reply', 'replyApproved', 'followUps', 'conversation', 'posted', 'postUrl'].forEach(key => {
+    ['name', 'ch', 'source', 'threadUrl', 'threadKey', 'comment', 'stage', 'reply', 'replyApproved', 'followUps', 'conversation', 'posted', 'postUrl'].forEach(key => {
       expect(DEFAULT_LEAD).toHaveProperty(key);
     });
   });

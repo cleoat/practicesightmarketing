@@ -1,5 +1,5 @@
 // Pipeline stages
-export const APP_BUILD_LABEL = 'Conservative vendor replies v1';
+export const APP_BUILD_LABEL = 'Smart CRM import v1';
 
 export const STAGES = [
   { id: 'saw_it', label: 'Saw it', color: '#2563EB', desc: 'No pain yet' },
@@ -56,6 +56,7 @@ export const DEFAULT_LEAD = {
   ch: 'reddit',
   source: '',
   threadUrl: '',
+  threadKey: '',
   comment: '',
   stage: 'saw_it',
   leadType: 'unknown',
@@ -71,7 +72,11 @@ export const DEFAULT_LEAD = {
   date: new Date().toLocaleDateString(),
   actions: [],
   posted: false,
-  postUrl: ''
+  postUrl: '',
+  postAuthor: '',
+  postText: '',
+  importedAt: '',
+  lastImportedAt: ''
 };
 
 // Default settings template

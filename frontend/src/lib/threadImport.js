@@ -1,6 +1,6 @@
 import { DEFAULT_LEAD } from './constants';
 import { analyzeLeadComment } from './leadAnalysis';
-import { appendConversationMessage } from './conversation';
+import { appendConversationMessage, conversationForLead } from './conversation';
 
 const ACTION_LINES = new Set([
   'like',
@@ -60,6 +60,39 @@ function normalizeText(value) {
 function firstUrl(rawText) {
   const match = String(rawText || '').match(/https?:\/\/[^\s)]+/i);
   return match ? match[0].replace(/[.,;]+$/, '') : '';
+}
+
+function stableThreadUrlKey(url) {
+  const value = String(url || '').trim().toLowerCase().replace(/\/+$/, '');
+  if (!value) return '';
+
+  if (
+    /facebook\.com\/groups\/[^/]+\/posts\/[^/?#]+/.test(value) ||
+    /facebook\.com\/permalink\.php/.test(value) ||
+    /story_fbid=/.test(value) ||
+    /reddit\.com\/r\/[^/]+\/comments\/[^/]+/.test(value) ||
+    /\/status\/\d+/.test(value)
+  ) {
+    return value.replace(/[?#].*$/, '');
+  }
+
+  return '';
+}
+
+export function buildThreadKey(parts = {}) {
+  const urlKey = stableThreadUrlKey(parts.threadUrl);
+  if (urlKey) return `url:${urlKey}`;
+
+  const source = normalizeText(parts.source);
+  const author = normalizeText(parts.postAuthor);
+  const post = normalizeText(parts.postText).slice(0, 320);
+  const channel = normalizeText(parts.ch || parts.channel);
+
+  if (post.length > 24 && (source || author)) {
+    return `post:${channel}:${source}:${author}:${post}`;
+  }
+
+  return '';
 }
 
 function formatImportDate(now) {
@@ -139,9 +172,34 @@ function hasCommentBeforeTimestamp(lines, startIndex) {
 }
 
 function findFirstCommentIndex(lines, sourceInfo) {
+  const sourceIndex = sourceInfo.source
+    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
+    : -1;
+  const firstNameAfterSourceIndex = lines.findIndex((line, index) =>
+    index > sourceIndex &&
+    isLikelyName(line) &&
+    !(sourceInfo.source && isSameText(line, sourceInfo.source))
+  );
+
+  function looksLikePostAuthor(index) {
+    if (index !== firstNameAfterSourceIndex || index < 0) return false;
+
+    let sawPostText = false;
+    for (let cursor = index + 1; cursor < Math.min(lines.length, index + 16); cursor += 1) {
+      const line = lines[cursor];
+      if (isTimestamp(line)) return false;
+      if (isNoise(line) || isScrambledFacebookMeta(line)) continue;
+      if (isLikelyName(line) && sawPostText) return true;
+      if (normalizeText(line).length > 20) sawPostText = true;
+    }
+
+    return false;
+  }
+
   return lines.findIndex((line, index) => {
     if (!isLikelyName(line)) return false;
     if (sourceInfo.source && isSameText(line, sourceInfo.source)) return false;
+    if (looksLikePostAuthor(index)) return false;
     return hasCommentBeforeTimestamp(lines, index);
   });
 }
@@ -275,6 +333,12 @@ export function parseCopiedThread(rawText, communities = []) {
     threadUrl: firstUrl(rawText),
     postAuthor,
     postText,
+    threadKey: buildThreadKey({
+      ...sourceInfo,
+      threadUrl: firstUrl(rawText),
+      postAuthor,
+      postText,
+    }),
     comments,
   };
 }
@@ -283,22 +347,50 @@ function commentExists(lead, comment) {
   const normalized = normalizeText(comment);
   if (!normalized) return true;
 
-  const history = [lead.comment, ...(lead.followUps || [])].map(normalizeText);
+  const conversationComments = conversationForLead(lead)
+    .filter(message => message.role === 'lead')
+    .map(message => message.text);
+  const history = [lead.comment, ...(lead.followUps || []), ...conversationComments].map(normalizeText);
   return history.includes(normalized);
+}
+
+function leadThreadKey(lead) {
+  return buildThreadKey({
+    threadUrl: lead.threadUrl,
+    source: lead.source,
+    ch: lead.ch,
+    postAuthor: lead.postAuthor,
+    postText: lead.postText,
+  });
+}
+
+function sameLooseSource(lead, incoming) {
+  const incomingSource = normalizeText(incoming.source);
+  const existingSource = normalizeText(lead.source);
+  if (incomingSource && existingSource) return incomingSource === existingSource;
+  return Boolean(incoming.ch && lead.ch === incoming.ch);
 }
 
 function findExistingLead(leads, incoming) {
   const incomingName = normalizeText(incoming.name);
-  const incomingSource = normalizeText(incoming.source);
+  const incomingThreadKey = incoming.threadKey;
 
   return leads.find(lead => {
     const sameName = normalizeText(lead.name) === incomingName;
     if (!sameName) return false;
 
-    const existingSource = normalizeText(lead.source);
     if (commentExists(lead, incoming.comment)) return true;
-    if (incomingSource && existingSource) return existingSource === incomingSource;
-    return Boolean(incoming.ch && lead.ch === incoming.ch);
+
+    const existingThreadKey = lead.threadKey || leadThreadKey(lead);
+    if (incomingThreadKey && existingThreadKey) {
+      return incomingThreadKey === existingThreadKey;
+    }
+
+    if (!incomingThreadKey && !existingThreadKey) {
+      return sameLooseSource(lead, incoming);
+    }
+
+    return !existingThreadKey && sameLooseSource(lead, incoming);
   });
 }
 
@@ -320,33 +412,60 @@ function mergedStage(currentStage, analysisStage) {
   return stagePriority(analysisStage) > stagePriority(currentStage) ? analysisStage : currentStage;
 }
 
+function importMatchKey(incoming) {
+  return [
+    normalizeText(incoming.name),
+    incoming.threadKey || normalizeText(incoming.source),
+    incoming.ch || '',
+  ].join('|');
+}
+
 export function importCopiedThread(rawText, existingLeads, options = {}) {
   const parsed = parseCopiedThread(rawText, options.communities || []);
   const baseChannel = parsed.channel || options.defaultChannel || 'facebook';
   const baseSource = parsed.source || options.defaultSource || '';
   const now = options.now || Date.now();
   const importedAt = formatImportDate(now);
+  const threadUrl = options.threadUrl || parsed.threadUrl || '';
+  const threadKey = parsed.threadKey || buildThreadKey({
+    ...parsed,
+    source: baseSource,
+    ch: baseChannel,
+    threadUrl,
+  });
+  const threadMatched = Boolean(threadKey && existingLeads.some(lead => (lead.threadKey || leadThreadKey(lead)) === threadKey));
+  const originalLeadIds = new Set(existingLeads.map(lead => lead.id));
 
   let added = 0;
   let updated = 0;
   let skipped = 0;
-  const updatedNames = [];
-  const addedNames = [];
+  let newComments = 0;
+  let duplicateComments = 0;
+  const updatedNames = new Set();
+  const addedNames = new Set();
+  const matchedNames = new Set();
 
   const nextLeads = [...existingLeads];
+  const importMatches = new Map();
 
   parsed.comments.forEach((item, index) => {
     const incoming = {
       ...item,
       ch: item.ch || baseChannel,
       source: item.source || baseSource,
+      threadKey,
     };
     const analysis = analyzeLeadComment(incoming.comment);
-    const existing = findExistingLead(nextLeads, incoming);
+    const matchKey = importMatchKey(incoming);
+    const existing = importMatches.get(matchKey) || findExistingLead(nextLeads, incoming);
 
     if (existing) {
+      importMatches.set(matchKey, existing);
+      if (originalLeadIds.has(existing.id)) matchedNames.add(incoming.name);
+
       if (commentExists(existing, incoming.comment)) {
         skipped += 1;
+        duplicateComments += 1;
         return;
       }
 
@@ -368,13 +487,17 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
         analysisReason: analysis.reason,
         source: existing.source || incoming.source,
         ch: existing.ch || incoming.ch,
-        threadUrl: existing.threadUrl || options.threadUrl || parsed.threadUrl || '',
+        threadUrl: existing.threadUrl || threadUrl,
+        threadKey: existing.threadKey || threadKey,
         postAuthor: existing.postAuthor || parsed.postAuthor || '',
         postText: existing.postText || parsed.postText || '',
         importedAt: existing.importedAt || importedAt,
+        lastImportedAt: importedAt,
       };
+      importMatches.set(matchKey, nextLeads[existingIndex]);
       updated += 1;
-      updatedNames.push(incoming.name);
+      newComments += 1;
+      updatedNames.add(incoming.name);
       return;
     }
 
@@ -391,10 +514,12 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
       intent: analysis.intent,
       analysisReason: analysis.reason,
       date: importedAt,
-      threadUrl: options.threadUrl || parsed.threadUrl || '',
+      threadUrl,
+      threadKey,
       postAuthor: parsed.postAuthor || '',
       postText: parsed.postText || '',
       importedAt,
+      lastImportedAt: importedAt,
       conversation: [{
         id: `${now + index}-lead-0`,
         role: 'lead',
@@ -403,18 +528,25 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
       }],
     });
     added += 1;
-    addedNames.push(incoming.name);
+    newComments += 1;
+    addedNames.add(incoming.name);
   });
 
   return {
     leads: nextLeads,
-    parsed,
+    parsed: { ...parsed, threadKey },
     importedAt,
+    threadKey,
+    threadMatched,
     added,
     updated,
     skipped,
-    addedNames,
-    updatedNames,
+    newComments,
+    duplicateComments,
+    matched: matchedNames.size,
+    addedNames: [...addedNames],
+    updatedNames: [...updatedNames],
+    matchedNames: [...matchedNames],
   };
 }
 

@@ -225,6 +225,7 @@ describe('parseCopiedThread', () => {
     expect(result.source).toBe('Mental Health Billing Support');
     expect(result.postAuthor).toBe('Leonardo Aguilar');
     expect(result.postText).toContain('Hello Group');
+    expect(result.threadKey).toContain('mental health billing support');
     expect(result.comments.map(comment => comment.name)).toEqual([
       'Zuraiz Khan',
       'Anonymous participant 177',
@@ -309,10 +310,12 @@ describe('importCopiedThread', () => {
     expect(result.importedAt).toBe('May 21, 2026');
     expect(result.parsed.source).toBe('Mental Health Billing Support');
     expect(result.parsed.postAuthor).toBe('Leonardo Aguilar');
+    expect(result.threadKey).toBe(result.parsed.threadKey);
 
     const david = result.leads.find(lead => lead.name === 'David Shahzad');
     expect(david.date).toBe('May 21, 2026');
     expect(david.source).toBe('Mental Health Billing Support');
+    expect(david.threadKey).toBe(result.threadKey);
     expect(david.postAuthor).toBe('Leonardo Aguilar');
     expect(david.stage).toBe('not_fit');
     expect(david.conversation).toEqual([
@@ -323,6 +326,84 @@ describe('importCopiedThread', () => {
         at: 'May 21, 2026',
       },
     ]);
+  });
+
+  it('recognizes the same copied thread and skips already-saved comments', () => {
+    const first = importCopiedThread(rawFacebookCopy, [], {
+      communities,
+      now: new Date('2026-05-21T12:00:00Z').getTime(),
+    });
+    const second = importCopiedThread(rawFacebookCopy, first.leads, {
+      communities,
+      now: new Date('2026-05-22T12:00:00Z').getTime(),
+    });
+
+    expect(second.threadMatched).toBe(true);
+    expect(second.added).toBe(0);
+    expect(second.updated).toBe(0);
+    expect(second.skipped).toBe(10);
+    expect(second.matched).toBe(10);
+    expect(second.duplicateComments).toBe(10);
+  });
+
+  it('adds only newer replies from a later paste of the same thread', () => {
+    const first = importCopiedThread(rawFacebookCopy, [], {
+      communities,
+      now: new Date('2026-05-21T12:00:00Z').getTime(),
+    });
+    const laterCopy = rawFacebookCopy.replace(
+      'David Shahzad\nSend me text. I will let you know all the process and also share you information how itself work',
+      `Hallee Nelson
+I also started checking the 60 day aging bucket every Friday before month end.
+2h
+Reply
+Send message
+Share
+David Shahzad
+Send me text. I will let you know all the process and also share you information how itself work`
+    );
+
+    const second = importCopiedThread(laterCopy, first.leads, {
+      communities,
+      now: new Date('2026-05-22T12:00:00Z').getTime(),
+    });
+
+    const hallee = second.leads.find(lead => lead.name === 'Hallee Nelson');
+    expect(second.threadMatched).toBe(true);
+    expect(second.added).toBe(0);
+    expect(second.updated).toBe(1);
+    expect(second.skipped).toBe(10);
+    expect(second.updatedNames).toEqual(['Hallee Nelson']);
+    expect(hallee.conversation.map(message => message.text)).toContain('I also started checking the 60 day aging bucket every Friday before month end.');
+  });
+
+  it('does not merge the same commenter across different source posts', () => {
+    const first = importCopiedThread(rawFacebookCopy, [], {
+      communities,
+      now: new Date('2026-05-21T12:00:00Z').getTime(),
+    });
+    const differentThread = `
+Mental Health Billing Support
+Leonardo Aguilar
+How do you handle unpaid insurance balances before closing the month?
+Hallee Nelson
+I run a separate unpaid claims report and compare it to deposits.
+4h
+Reply
+Send message
+Share
+`;
+
+    const second = importCopiedThread(differentThread, first.leads, {
+      communities,
+      now: new Date('2026-05-22T12:00:00Z').getTime(),
+    });
+
+    const halleeLeads = second.leads.filter(lead => lead.name === 'Hallee Nelson');
+    expect(second.threadMatched).toBe(false);
+    expect(second.added).toBe(1);
+    expect(second.updated).toBe(0);
+    expect(halleeLeads).toHaveLength(2);
   });
 
   it('skips exact duplicates and appends new comments to existing lead history', () => {

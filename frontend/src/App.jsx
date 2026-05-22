@@ -96,7 +96,7 @@ function App() {
 
     setLeadsState(result.leads);
     setImportResult(result);
-    setMsg(`Imported ${result.added} new from ${result.parsed.source || 'this thread'}`);
+    setMsg(`Added ${result.added} leads, updated ${result.updated}, skipped ${result.skipped}`);
     setTimeout(() => setMsg(''), 2200);
   }
 
@@ -474,14 +474,21 @@ function App() {
                 <span>
                   Imported {importResult.importedAt} from {importResult.parsed.source || 'unknown source'}
                   {importResult.parsed.postAuthor ? `, ${importResult.parsed.postAuthor}'s post` : ''}.
-                  {' '}Parsed {importResult.parsed.comments.length} comments. Added {importResult.added}, updated {importResult.updated}, skipped {importResult.skipped}.
+                  {' '}Parsed {importResult.parsed.comments.length} comments.
+                  {' '}Added {importResult.added} new leads.
+                  {' '}Added {importResult.updated} new comments to existing leads.
+                  {' '}Skipped {importResult.skipped} already-saved comments.
+                  {importResult.threadMatched ? ` Matched ${importResult.matched} existing leads in this same thread.` : ''}
                 </span>
               )}
               {!importResult.error && importResult.updatedNames.length > 0 && (
-                <span> Updated: {importResult.updatedNames.slice(0, 5).join(', ')}.</span>
+                <span> New replies added for: {importResult.updatedNames.slice(0, 5).join(', ')}.</span>
               )}
               {!importResult.error && importResult.addedNames.length > 0 && (
-                <span> New: {importResult.addedNames.slice(0, 5).join(', ')}.</span>
+                <span> New leads: {importResult.addedNames.slice(0, 5).join(', ')}.</span>
+              )}
+              {!importResult.error && importResult.threadMatched && importResult.updated === 0 && importResult.added === 0 && (
+                <span> Same thread recognized; nothing new to add.</span>
               )}
             </div>
           )}

@@ -12,6 +12,7 @@ export const leadSchema = z.object({
   analysisReason: z.string().optional().default(''),
   source: z.string().optional().default(''),
   threadUrl: z.string().optional().default(''),
+  threadKey: z.string().optional().default(''),
   reply: z.string().optional().default(''),
   replyApproved: z.boolean().optional().default(false),
   lastApprovedReply: z.string().optional().default(''),
@@ -26,7 +27,11 @@ export const leadSchema = z.object({
   date: z.string().optional(),
   actions: z.array(z.string()).optional().default([]),
   posted: z.boolean().optional().default(false),
-  postUrl: z.string().url().or(z.literal('')).optional().default('')
+  postUrl: z.string().url().or(z.literal('')).optional().default(''),
+  postAuthor: z.string().optional().default(''),
+  postText: z.string().optional().default(''),
+  importedAt: z.string().optional().default(''),
+  lastImportedAt: z.string().optional().default('')
 });
 
 export function validateInput(schema, data) {
