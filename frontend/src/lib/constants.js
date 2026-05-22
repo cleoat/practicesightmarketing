@@ -1,5 +1,5 @@
 // Pipeline stages
-export const APP_BUILD_LABEL = 'Conversation loop v1';
+export const APP_BUILD_LABEL = 'Conservative vendor replies v1';
 
 export const STAGES = [
   { id: 'saw_it', label: 'Saw it', color: '#2563EB', desc: 'No pain yet' },

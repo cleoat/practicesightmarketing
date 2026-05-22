@@ -17,12 +17,12 @@ const LEAD_TYPE_META = {
   billing_vendor: {
     icon: '🏢', label: 'Billing company / vendor',
     color: '#DC2626', bg: '#FEF2F2', border: '#FECACA',
-    action: 'Generate Referral Ask',
+    action: 'Generate Neutral Reply',
   },
   outsourced_billing: {
     icon: '🔄', label: 'Billing outsourced',
     color: '#D97706', bg: '#FFFBEB', border: '#FDE68A',
-    action: 'Generate Referral Ask',
+    action: 'Generate Neutral Reply',
   },
   potential_practice: {
     icon: '👤', label: 'Private practice therapist',
@@ -42,7 +42,7 @@ const LEAD_TYPE_META = {
   hot             → Remove friction. Clear path to try it. One ask.
   testing         → Encourage + ask what they found.
   gave_feedback   → Thank + 3 feedback questions.
-  not_fit         → Referral ask. Warm, no pitch.
+  not_fit         → Neutral reply. No product unless it is already a direct/private conversation.
 */
 
 const FAST_REPLY_MODELS = [
@@ -58,18 +58,28 @@ const SYSTEM_PERSONA = `You are Leonardo, a therapist in private practice. You w
 function buildPrompt({ comment, name, stage, leadType, communityRule, variationNum, conversationContext }) {
   const strict = communityRule?.strict;
   const canMention = communityRule?.canMentionProduct && ['warm','hot','testing','gave_feedback'].includes(stage);
+  const isPrivateChannel = ['dm', 'whatsapp'].includes(communityRule?.platform);
   const variation = variationNum || 1;
   const context = conversationContext
     ? `Conversation so far:\n${conversationContext}\n\n`
     : '';
 
   if (leadType === 'billing_vendor') {
+    if (isPrivateChannel) {
+      return `${SYSTEM_PERSONA}
+
+${context}${name} appears to be a billing company or service provider. Latest message:
+"${comment}"
+
+Write reply #${variation}. Under 35 words. Keep it low-pressure. Acknowledge their billing work and ask if any therapist clients doing their own SimplePractice billing might find a free checker useful. Reply only.`;
+    }
+
     return `${SYSTEM_PERSONA}
 
 ${context}${name} appears to be a billing company or service provider. Latest message:
 "${comment}"
 
-Write reply #${variation}. Under 35 words. Acknowledge what they do, then ask if any therapist clients who do their own SimplePractice billing might find a free checker useful. Reply only.`;
+This is a public community thread. Do not mention PracticeSight, your tool, a link, DMs, referrals, or client introductions. Write reply #${variation}. Under 35 words. Acknowledge the process point and ask one neutral billing workflow question. Reply only.`;
   }
 
   if (leadType === 'outsourced_billing') {
@@ -78,7 +88,7 @@ Write reply #${variation}. Under 35 words. Acknowledge what they do, then ask if
 ${context}${name} has billing outsourced. Latest message:
 "${comment}"
 
-Write reply #${variation}. Under 35 words. Acknowledge they may not need this, then casually ask if they know colleagues doing their own SimplePractice billing. Reply only.`;
+Write reply #${variation}. Under 35 words. Do not mention PracticeSight, referrals, links, or DMs. Acknowledge they may not need to track this closely and ask one neutral question about what they still review themselves. Reply only.`;
   }
 
   if (['cold','saw_it'].includes(stage) || strict) {
