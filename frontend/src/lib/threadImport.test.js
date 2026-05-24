@@ -198,6 +198,174 @@ Facebook
 Facebook
 `;
 
+const fullFacebookPageCopy = `
+Home
+Create a post
+What's on your mind, Leonardo?
+Stories
+Create story
+Jake Van Clief
+Atlantis University
+Feed posts
+Facebook
+ACT Made Simple - Acceptance & Commitment Therapy for Practitioners
+Florencia Allegretti
+ ·
+Sponsored
+ ·
+Hi all, I am a newbie to ACT and I am trying to use this approach with a client who has a history of chronic pain & trauma. As they put it, they are used to white-knuckling/burying their feelings and pushing through their discomfort in order to engage in valued actions such as work or family, but they see this as incredibly exhausting and it comes at a cost.
+9
+12
+Copy Link
+Facebook
+Facebook
+Leonardo Aguilar's Post
+Facebook
+Facebook
+Mental Health Billing Support
+Leonardo Aguilar
+ ·
+s
+n
+o
+e
+p
+r
+o
+S
+t
+d
+8
+a
+c
+t
+m
+9
+0
+4
+h
+0
+l
+ :
+m
+f
+ 3
+9
+A
+4
+a
+1
+M
+M
+c
+ ·
+Hello Group, For those of you in private practice who do your own insurance billing, how do you do your month-end review? Do you have like a system or is it more just knowing your numbers very well to catch things? Genuinely curious what works for you!
+7
+21
+All comments﻿
+Hamza Ali
+We do entire billing and entering payments into the system for whole month and then export the payment report at the end of the month and reconcile the checks and balances looks perfect. Happy to help just send me a message.
+3d
+Like
+Reply
+Send message
+Share
+Anonymous participant 177
+Please check ib
+3d
+Like
+Reply
+Share
+1
+View 1 reply
+Jethro Magaji
+Most people who do their own billing eventually develop a simple monthly reconciliation system.
+Typical month end workflow:
+- Claims submitted = compare against claims paid
+- ERA/EOB = match against bank deposits
+- Check unpaid/denied claims
+- Review aging reports (30/60/90 days)
+- Compare scheduled sessions vs billed sessions
+Some people know their numbers really well, but most successful practices rely on:
+- EHR reporting
+- spreadsheets/dashboard tracking
+- weekly reconciliation habits
+That’s why strong billing visibility matters so much in systems like ClinikEHR, TherapyNotes, etc.
+3d
+Like
+Reply
+Send message
+Share
+2
+View 1 reply
+Musawir Khan
+ ·
+Follow
+A good month-end review usually includes checking total charges, payments, denials, aging AR, unsubmitted claims, and insurance balances to catch anything missed. Having a consistent report/reconciliation process helps much more than just memorizing numbers. We also help practices with billing audits, AR review, and month-end reporting support.
+3d
+Like
+Reply
+Send message
+Share
+David Shahzad
+Send me text. I will let you know all the process and also share you information how itself work
+3d
+Like
+Reply
+Send message
+Share
+Claire Lah
+I would first be in a set routine with your billing. Then you would run a charge lay report and days in ar for basics let me know if I can help
+3d
+Like
+Reply
+Send message
+Share
+Brenda Adams
+Run reports in ur billing system and reconcile bank deposits to posted /closed claims. On the billing system, run an a/r aging report and work all open claims. A lot can be done on ur clearinghouse platform as well.
+Pivot RCM Solutions, LLC
+b.adams@pivotrcm.com
+3d
+Like
+Reply
+Send message
+Share
+Edited
+Hallee Nelson
+Routine is so important in billing! Reports inside your EHR should be a great asset to see what is outstanding and being able to match up any payments helps.
+3d
+Like
+Reply
+Send message
+Share
+View 1 reply
+Anonymous participant 617
+I use InvoQuest
+3d
+Like
+Reply
+Share
+Aisha Khan
+Collection report
+3d
+Like
+Reply
+Send message
+Share
+View all 4 replies
+Facebook
+Facebook
+Comment as Leonardo
+Adam Robin
+Active 35m ago
+Messages
+Adam Robin
+Enter, Conversation details
+Hey Leonardo, not sure if you saw my comment on your post but that’s honestly a really important question.
+Compose
+Write to Adam Robin
+`;
+
 describe('parseCopiedThread', () => {
   it('extracts Facebook comments from noisy copied thread text', () => {
     const result = parseCopiedThread(copiedPost, communities);
@@ -239,6 +407,29 @@ describe('parseCopiedThread', () => {
       'David Shahzad',
     ]);
     expect(result.comments.find(comment => comment.name === 'Mental Health Billing Support')).toBeUndefined();
+  });
+
+  it('anchors a full Facebook page paste to the detected post and ignores surrounding posts/messages', () => {
+    const result = parseCopiedThread(fullFacebookPageCopy, communities);
+
+    expect(result.source).toBe('Mental Health Billing Support');
+    expect(result.postAuthor).toBe('Leonardo Aguilar');
+    expect(result.postText).toContain('Hello Group');
+    expect(result.postText).not.toContain('ACT');
+    expect(result.postText).not.toContain('Florencia');
+    expect(result.comments.map(comment => comment.name)).toEqual([
+      'Hamza Ali',
+      'Anonymous participant 177',
+      'Jethro Magaji',
+      'Musawir Khan',
+      'David Shahzad',
+      'Claire Lah',
+      'Brenda Adams',
+      'Hallee Nelson',
+      'Anonymous participant 617',
+      'Aisha Khan',
+    ]);
+    expect(result.comments.find(comment => comment.name === 'Adam Robin')).toBeUndefined();
   });
 
   it('detects verified communities from direct links in the copied text', () => {
@@ -344,6 +535,27 @@ describe('importCopiedThread', () => {
     expect(second.skipped).toBe(10);
     expect(second.matched).toBe(10);
     expect(second.duplicateComments).toBe(10);
+  });
+
+  it('updates an existing thread from a full page paste and adds only new commenters', () => {
+    const first = importCopiedThread(rawFacebookCopy, [], {
+      communities,
+      now: new Date('2026-05-21T12:00:00Z').getTime(),
+    });
+    const second = importCopiedThread(fullFacebookPageCopy, first.leads, {
+      communities,
+      now: new Date('2026-05-23T12:00:00Z').getTime(),
+    });
+
+    const hamza = second.leads.find(lead => lead.name === 'Hamza Ali');
+    expect(second.threadMatched).toBe(true);
+    expect(second.added).toBe(1);
+    expect(second.updated).toBe(0);
+    expect(second.skipped).toBe(9);
+    expect(second.addedNames).toEqual(['Hamza Ali']);
+    expect(hamza.stage).toBe('not_fit');
+    expect(hamza.leadType).toBe('billing_vendor');
+    expect(second.leads.find(lead => lead.name === 'Adam Robin')).toBeUndefined();
   });
 
   it('adds only newer replies from a later paste of the same thread', () => {

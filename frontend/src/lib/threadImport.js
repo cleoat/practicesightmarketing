@@ -10,6 +10,7 @@ const ACTION_LINES = new Set([
   'follow',
   'edited',
   'most relevant',
+  'all comments',
   'view 1 reply',
   'view more comments',
   'comment as leonardo',
@@ -31,6 +32,8 @@ const UI_NOISE_PATTERNS = [
   /^what's on your mind/i,
   /^comment as /i,
   /^reply as /i,
+  /^copy link$/i,
+  /^view (all )?\d+ repl(y|ies)$/i,
   /^anonymous participant$/i,
   /^[·•]$/,
   /^[a-z]$/i,
@@ -207,8 +210,13 @@ function findFirstCommentIndex(lines, sourceInfo) {
 function sliceRelevantThread(lines, sourceInfo) {
   const startMarkers = ['most relevant', 'all comments', 'view more comments'];
   const endMarkers = ['comment as '];
+  const sourceIndex = sourceInfo.source
+    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
+    : -1;
 
-  const startIndex = lines.findIndex(line => startMarkers.includes(line.toLowerCase()));
+  const startIndex = lines.findIndex((line, index) =>
+    index > sourceIndex && startMarkers.includes(line.toLowerCase())
+  );
   const firstCommentIndex = startIndex >= 0 ? startIndex + 1 : findFirstCommentIndex(lines, sourceInfo);
   const sliced = firstCommentIndex >= 0 ? lines.slice(firstCommentIndex) : lines;
   const endIndex = sliced.findIndex(line =>
@@ -236,10 +244,14 @@ function findPostAuthor(lines, sourceInfo, firstCommentIndex) {
 }
 
 function extractPostText(lines, sourceInfo, postAuthor, firstCommentIndex) {
+  const sourceIndex = sourceInfo.source
+    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
+    : -1;
+  const startIndex = sourceIndex >= 0 ? sourceIndex + 1 : 0;
   const stopIndex = firstCommentIndex >= 0 ? firstCommentIndex : lines.length;
   const parts = [];
 
-  for (let index = 0; index < stopIndex; index += 1) {
+  for (let index = startIndex; index < stopIndex; index += 1) {
     const line = lines[index];
     if (isNoise(line) || isTimestamp(line) || isScrambledFacebookMeta(line)) continue;
     if (sourceInfo.source && isSameText(line, sourceInfo.source)) continue;
