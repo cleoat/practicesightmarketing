@@ -111,6 +111,10 @@ function mergeGroup(group) {
   });
 }
 
+export function mergeLeadGroup(group) {
+  return mergeGroup(group);
+}
+
 export function mergeDuplicateLeads(leads) {
   const groups = new Map();
   const singles = [];
@@ -137,5 +141,62 @@ export function mergeDuplicateLeads(leads) {
   return {
     leads: [...merged, ...singles].sort((a, b) => Number(b.id || 0) - Number(a.id || 0)),
     removed,
+  };
+}
+
+function possibleDuplicateKey(lead) {
+  const name = normalizeImportedText(lead.name);
+  if (!name) return '';
+
+  const source = normalizeImportedText(lead.source);
+  const channel = String(lead.ch || '').trim().toLowerCase();
+  if (!source && !channel) return '';
+
+  return `${name}|${source}|${channel}`;
+}
+
+export function findPotentialDuplicateGroups(leads) {
+  const groups = new Map();
+
+  leads.forEach(lead => {
+    if (leadThreadKey(lead)) return;
+
+    const key = possibleDuplicateKey(lead);
+    if (!key) return;
+
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(lead);
+  });
+
+  return [...groups.values()]
+    .filter(group => group.length > 1)
+    .map(group => ({
+      id: group.map(lead => lead.id).sort().join('-'),
+      name: group[0].name,
+      source: group[0].source || group[0].ch || 'unknown source',
+      count: group.length,
+      leadIds: group.map(lead => lead.id),
+      reason: 'Same name and same source, but no saved thread fingerprint. Review before merging.',
+    }));
+}
+
+export function mergeLeadIds(leads, leadIds) {
+  const targetIds = new Set(leadIds);
+  const group = leads.filter(lead => targetIds.has(lead.id));
+
+  if (group.length < 2) {
+    return { leads, removed: 0, mergedLead: group[0] || null };
+  }
+
+  const mergedLead = mergeGroup(group);
+  const nextLeads = [
+    mergedLead,
+    ...leads.filter(lead => !targetIds.has(lead.id)),
+  ].sort((a, b) => Number(b.id || 0) - Number(a.id || 0));
+
+  return {
+    leads: nextLeads,
+    removed: group.length - 1,
+    mergedLead,
   };
 }

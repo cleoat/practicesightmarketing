@@ -9,7 +9,7 @@ import { analyzeLeadComment } from './lib/leadAnalysis';
 import { inferChannelFromText } from './lib/communityRules';
 import { importCopiedThread, parseCopiedThread } from './lib/threadImport';
 import { appendConversationMessage, formatConversationDate } from './lib/conversation';
-import { mergeDuplicateLeads } from './lib/leadMerge';
+import { findPotentialDuplicateGroups, mergeDuplicateLeads, mergeLeadIds } from './lib/leadMerge';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
@@ -45,6 +45,7 @@ function App() {
 
   const inputAnalysis = analyzeLeadComment(inputComment);
   const importPreview = importText.trim() ? parseCopiedThread(importText, COMMUNITIES) : null;
+  const possibleDuplicateGroups = findPotentialDuplicateGroups(leads);
   const importPreviewDate = new Date().toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -166,6 +167,13 @@ function App() {
     setLeadsState(leads.filter(l => l.id !== id));
   }
 
+  function handleMergePossibleDuplicates(leadIds) {
+    const result = mergeLeadIds(leads, leadIds);
+    setLeadsState(result.leads);
+    setMsg(`Merged ${result.removed} duplicate lead card${result.removed === 1 ? '' : 's'}`);
+    setTimeout(() => setMsg(''), 1800);
+  }
+
   function stageScore(stage) {
     return {
       saw_it: 1,
@@ -276,6 +284,71 @@ function App() {
 
         {/* Metrics */}
         <MetricsBar leads={leads} redditStats={redditStats} />
+
+        {possibleDuplicateGroups.length > 0 && (
+          <div style={{
+            background: '#FFF7ED',
+            border: `1px solid #FDBA74`,
+            borderRadius: 8,
+            padding: 14,
+            marginBottom: 18,
+            boxShadow: '0 10px 26px rgba(15, 23, 42, 0.05)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap', marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 900, color: '#9A3412', marginBottom: 3 }}>
+                  Possible duplicates to review
+                </div>
+                <div style={{ fontSize: 13, color: '#9A3412', fontWeight: 700 }}>
+                  Same person and same source, but the app does not have enough thread proof to auto-merge.
+                </div>
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 900, color: '#9A3412' }}>
+                {possibleDuplicateGroups.length} group{possibleDuplicateGroups.length === 1 ? '' : 's'}
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {possibleDuplicateGroups.slice(0, 4).map(group => (
+                <div key={group.id} style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) auto',
+                  gap: 10,
+                  alignItems: 'center',
+                  background: '#fff',
+                  border: '1px solid #FED7AA',
+                  borderRadius: 8,
+                  padding: '10px 12px'
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 900, color: COLORS.text }}>
+                      {group.name} · {group.count} cards
+                    </div>
+                    <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {group.source} · {group.reason}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleMergePossibleDuplicates(group.leadIds)}
+                    style={{
+                      padding: '9px 11px',
+                      background: '#9A3412',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      fontWeight: 900,
+                      fontFamily: 'inherit',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Merge group
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Action Queue */}
         <ActionQueue leads={leads} />
