@@ -184,26 +184,26 @@ const PHASE_COLORS = {
 };
 
 const REMIX_ANGLES = [
-  'qualify who actually does their own SimplePractice billing',
-  'make the hidden cost/risk feel concrete',
-  'move safe communities toward a small PracticeSight trial',
+  'diagnostic question that helps the right person self-identify',
+  'insight question that makes the hidden risk visible',
+  'permission-based next step toward a tiny PracticeSight trial',
 ];
 
 const CONVERSION_STEPS = [
   {
-    label: 'Step 1 - qualify',
-    strict: 'Find who has the pain without mentioning PracticeSight.',
-    open: 'Find who has the pain without mentioning PracticeSight yet.',
+    label: 'Step 1 - diagnose',
+    strict: 'Help the right person name the gap.',
+    open: 'Help the right person name the gap.',
   },
   {
-    label: 'Step 2 - surface risk',
-    strict: 'Make the gap concrete without pitching.',
-    open: 'Make the cost of manual review concrete.',
+    label: 'Step 2 - create insight',
+    strict: 'Make the current-risk visible without pitching.',
+    open: 'Make the current-risk visible without pitching.',
   },
   {
-    label: 'Step 3 - soft trial ask',
-    strict: 'Ask for workflow detail only. No product name or link.',
-    open: 'Invite a few people to try PracticeSight with their own reports.',
+    label: 'Step 3 - permission ask',
+    strict: 'Ask what proof would help. No product name or link.',
+    open: 'Ask permission for a tiny PracticeSight trial.',
   },
 ];
 
@@ -241,36 +241,36 @@ function buildLocalRemixes(body, communityRule) {
   const isPhase2 = /practicesight\.pages\.dev/i.test(body);
   const allowProduct = !communityRule.strict;
   const productLine = isPhase2
-    ? 'I built PracticeSight for this: export the SimplePractice reports, drag them in, and it shows the specific rows that need attention. Free, runs in your browser, nothing uploaded. practicesight.pages.dev'
-    : 'I am testing PracticeSight, a free SimplePractice billing checker I built. You export the reports, drag them in, and it shows what needs attention. Would a couple people be open to trying it on real data?';
+    ? 'I built PracticeSight as a second set of eyes for this: export the SimplePractice reports, drag them in, and it shows the specific rows that may need attention. Free, browser-only, nothing uploaded. practicesight.pages.dev'
+    : 'I built PracticeSight as a second set of eyes for SimplePractice billing reports. If you do your own billing, would you be open to running it once and telling me whether it catches anything useful?';
 
   if (communityRule.platform === 'reddit') {
     const strictReddit = [
-      `For people doing their own insurance billing, how are you handling ${pain}? I am curious whether most people have a checklist, or if it is more of a gut-check when something feels off.`,
-      `What is the one billing thing you trust least at month end: unbilled sessions, unpaid claims, payment posting, or deposits matching what was posted?`,
-      `I keep coming back to this because the hard part is not knowing the reports exist. It is knowing what needs action before something gets old. How are you catching that now?`,
+      `For people doing their own SimplePractice billing, how do you decide your ${pain} is actually done? Is there one check that tells you you are clear, or is it more pattern recognition from knowing your numbers?`,
+      `The thing I am trying to understand is where billing mistakes usually hide. Is it missed sessions, unpaid claims, denied claims, payment posting, or deposits not matching what was entered?`,
+      `If you had 10 minutes to prove your billing was clean, what would you check first? I am trying to separate "I ran reports" from "I know exactly what needs action."`,
     ];
     if (!allowProduct) return strictReddit;
 
     return [
       strictReddit[0],
       strictReddit[1],
-      `${productLine} I would be especially curious if it catches anything you did not already know about.`,
+      `${productLine} I am not trying to sell anyone on it here. I mostly want to know if the output matches what a real practice owner would trust.`,
     ];
   }
 
   if (!allowProduct) {
     return [
-      `For those doing your own billing in private practice, what does your ${pain} actually look like at the end of the month?`,
-      `I am curious what people worry about most when reviewing billing: a missed session, an unpaid claim, payment posting, or the bank deposit not matching what was entered.`,
-      `The part I keep hearing is that people have reports, but not always a clear "check this next" list. Do you use a routine for that or mostly know your numbers well?`,
+      `For those doing your own SimplePractice billing, how do you decide your ${pain} is actually done?`,
+      `I am curious where things usually slip through for people: missed sessions, unpaid claims, denials, payment posting, or deposits not matching what was entered.`,
+      `If you had to prove your billing was clean in 10 minutes, what would you check first? I am trying to understand what actually gives people confidence.`,
     ];
   }
 
   return [
-    `For those doing your own billing in private practice, what does your ${pain} actually look like at the end of the month?`,
-    `I am curious what people worry about most when reviewing billing: a missed session, an unpaid claim, payment posting, or the bank deposit not matching what was entered.`,
-    `${productLine} No account needed. I mostly want to know whether it finds anything you would have missed.`,
+    `For those doing your own SimplePractice billing, how do you decide your ${pain} is actually done?`,
+    `I am curious where things usually slip through for people: missed sessions, unpaid claims, denials, payment posting, or deposits not matching what was entered.`,
+    `${productLine} No pressure either way. I am looking for a few honest reactions from people who would know quickly if it is useful or not.`,
   ];
 }
 
@@ -298,16 +298,21 @@ NON-NEGOTIABLE RULE:
 ${productInstruction}
 
 PSYCHOLOGY:
-- The goal is not generic engagement. The goal is to move readers one step closer to trying PracticeSight.
+- Use consultative sales psychology, not pressure.
+- Do not prescribe before the reader has recognized the problem.
 - Use this ladder:
-  1. Qualify: get only people doing their own SimplePractice billing to self-identify.
-  2. Surface risk: make one hidden billing gap concrete, like missed sessions, unpaid claims, denied claims, payment posting, bank deposit mismatch, or aging AR.
-  3. Trial ask: if rules allow, ask whether 2-3 people would try PracticeSight on their own exports and report what it catches.
-- Make PracticeSight feel like the obvious next step after the pain, not a drive-by link.
+  1. Diagnose: get only people doing their own SimplePractice billing to self-identify.
+  2. Create insight: help them see one specific gap in their current process without fearmongering.
+  3. Ask permission: if rules allow, invite a small real-data trial as a favor/feedback ask, not a pitch.
+- Create useful tension between "I run reports" and "I know exactly what needs action."
+- Use micro-commitments: "would you be open to running it once" or "would it be useful if..."
+- Protect autonomy: no pressure, honest feedback is useful, not everyone will need it.
+- Make PracticeSight feel like a second set of eyes after the pain is named, not the hero of the post.
 - When mentioning PracticeSight, include the practical proof: SimplePractice reports, drag them in, specific rows/action list, browser-only, nothing uploaded, free.
-- End the trial ask with a simple low-pressure yes/no ask.
+- The trial ask should feel like a low-friction next step, not a product launch.
 - Do not use generic phrases like optimize, streamline, game changer, unlock, leverage, robust, or revolutionize.
 - Do not sound like an ad, agency, vendor, or content marketer.
+- Avoid "limited spots", urgency, scarcity, exaggerated claims, or guilt.
 - No hashtags, emojis, hype, or exclamation marks.
 
 Write 3 remixes as a sequence that gets progressively closer to a try:
