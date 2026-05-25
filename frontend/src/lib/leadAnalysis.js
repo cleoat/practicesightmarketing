@@ -68,6 +68,7 @@ const PROCESS_ADVICE_PATTERNS = [
   /\b(routine|system|workflow|spreadsheet|dashboard|reporting|weekly reconciliation)\b/,
   /\b(collection report|charge lag report|days in ar|a\/r aging|ar aging)\b/,
   /\b(ehr reporting|clearinghouse platform|era\/eob|eras?|eobs?)\b/,
+  /\b(touch my numbers|watch my clinicians claims|month end audit|double checking my work)\b/,
 ];
 
 // ── DOES OWN BILLING — QUALIFY BEFORE PITCH ────────────────────────

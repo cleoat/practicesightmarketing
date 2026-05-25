@@ -256,6 +256,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
   const typeMeta = LEAD_TYPE_META[leadType] || LEAD_TYPE_META.potential_practice;
   const stage = STAGES.find(s => s.id === lead.stage);
   const channel = CHANNELS[lead.ch];
+  const postContext = String(lead.postText || '').replace(/\s+/g, ' ').trim();
 
   const handleStageChange = (e) => onUpdate(lead.id, { stage: e.target.value });
   const handleDelete = () => { if (confirm(`Remove "${lead.name}"?`)) onDelete(lead.id); };
@@ -384,6 +385,34 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
         }}>
           "{activeComment.slice(0, 180)}{activeComment.length > 180 ? '...' : ''}"
         </div>
+
+        {(lead.source || postContext || lead.lastImportedAt) && (
+          <div style={{
+            display: 'grid',
+            gap: 5,
+            marginBottom: 12,
+            padding: '9px 10px',
+            borderRadius: 8,
+            border: `1px solid ${COLORS.border}`,
+            background: '#F8FAFC',
+            fontSize: 12,
+            color: COLORS.muted,
+            lineHeight: 1.4,
+          }}>
+            <div style={{ fontWeight: 900, color: COLORS.text }}>
+              {lead.source || channel?.label || 'Unknown source'}{lead.postAuthor ? ` · ${lead.postAuthor}'s post` : ''}
+            </div>
+            {postContext && (
+              <div>
+                {postContext.slice(0, 150)}{postContext.length > 150 ? '...' : ''}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontWeight: 800 }}>
+              {lead.importedAt && <span>Imported {lead.importedAt}</span>}
+              {lead.lastImportedAt && lead.lastImportedAt !== lead.importedAt && <span>Updated {lead.lastImportedAt}</span>}
+            </div>
+          </div>
+        )}
 
         {conversation.length > 0 && (
           <div style={{

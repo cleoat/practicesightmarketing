@@ -7,6 +7,11 @@ const communities = [
     platform: 'facebook',
     url: 'https://www.facebook.com/groups/1487216331977931/',
   },
+  {
+    name: 'Simple Practice Billing',
+    platform: 'facebook',
+    url: 'https://www.facebook.com/groups/2070605980012816/',
+  },
 ];
 
 const copiedPost = `
@@ -366,6 +371,105 @@ Compose
 Write to Adam Robin
 `;
 
+const simplePracticeFeedCopy = `
+Simple Practice Billing
+Public group
+ ·
+6.3K members
+Facebook
+Facebook
+Leonardo Aguilar
+4 hours ago
+ ·
+Hey group, For those of you in private practice who do your own insurance billing how do you actually do your month-end billing review?
+Do you have a specific routine, or is it more just knowing your numbers well enough to catch things?
+Genuinely curious what works for people.
+Facebook
+Facebook
+Dominique Caldwell
+6 hours ago
+ ·
+Medical billing services for pediatric practices
+Memorial Day Reminder
+See more
+unitybillingsolutions.com
+Unity Billing Solutions
+Facebook
+Facebook
+MV Assist - Your Medical Virtual Assistant Service
+a day ago
+ ·
+Hi everyone!
+If you're a practice owner or healthcare provider looking for reliable virtual support, I'd be happy to help.
+Let's connect!
+See more
+Facebook
+Facebook
+Anonymous participant
+3 days ago
+ ·
+Hello has anyone experienced this. We keep submitting Z.62.82 and continue to get the scrub.
+Anonymous participant 290
+z codes can't be the primary code.
+3d
+Reply
+Share
+Kris Ann Blaine
+It can't be the primary/only diagnosis
+3d
+Reply
+Share
+Facebook
+Facebook
+Leonardo Aguilar's Post
+Facebook
+Facebook
+Simple Practice Billing
+Leonardo Aguilar
+ ·
+4 hours ago
+ ·
+Hey group, For those of you in private practice who do your own insurance billing how do you actually do your month-end billing review?
+Do you have a specific routine, or is it more just knowing your numbers well enough to catch things?
+Genuinely curious what works for people.
+Kristi Lynn Taylor
+I try and watch my clinicians claims filed daily but at the end of the month I have a spreadsheet I have of all clients with all data that can be verified.
+51m
+Reply
+Send message
+Share
+Michael Nichols
+1)Daily review any, scrub, rejected or denied claim
+2) weekly export client aging, export report, sort by team member and solve any unpaid $
+3) bi weekly export unpaid insurance claim, sort by team member, solve any claim over 2 weeks old
+4) print allocation report bi weekly and send checks
+3h
+Reply
+Send message
+Share
+TurquoiseParsnip2059
+I hired a billing company . She really good Unity Billing Solutions LLC
+3h
+Reply
+Share
+Ximena Alyssa Herriges-Dalsing
+I touch my numbers every day, so the month end audit is really just about double checking my work.
+3h
+Reply
+Send message
+Share
+Musawir Khan
+ ·
+Most people end up doing a mix of both. There's usually a set routine, run aging reports, check unpaid claims over 30/60/90 days, review denials, and match deposits against EOBs/ERAs. After a while, you also just get familiar enough with your numbers that anything "off" stands out quickly.
+We also help practices with insurance billing, AR cleanup, and month-end reconciliation so nothing slips through the cracks.
+3h
+Reply
+Send message
+Share
+Facebook
+No file chosen
+`;
+
 describe('parseCopiedThread', () => {
   it('extracts Facebook comments from noisy copied thread text', () => {
     const result = parseCopiedThread(copiedPost, communities);
@@ -430,6 +534,25 @@ describe('parseCopiedThread', () => {
       'Aisha Khan',
     ]);
     expect(result.comments.find(comment => comment.name === 'Adam Robin')).toBeUndefined();
+  });
+
+  it('anchors a Facebook group feed copy to Leonardo post even without an all-comments marker', () => {
+    const result = parseCopiedThread(simplePracticeFeedCopy, communities);
+
+    expect(result.source).toBe('Simple Practice Billing');
+    expect(result.postAuthor).toBe('Leonardo Aguilar');
+    expect(result.postText).toContain('month-end billing review');
+    expect(result.postText).not.toContain('Dominique Caldwell');
+    expect(result.postText).not.toContain('MV Assist');
+    expect(result.comments.map(comment => comment.name)).toEqual([
+      'Kristi Lynn Taylor',
+      'Michael Nichols',
+      'TurquoiseParsnip2059',
+      'Ximena Alyssa Herriges-Dalsing',
+      'Musawir Khan',
+    ]);
+    expect(result.comments.find(comment => comment.name === 'Dominique Caldwell')).toBeUndefined();
+    expect(result.comments.find(comment => comment.name === 'Anonymous participant 290')).toBeUndefined();
   });
 
   it('detects verified communities from direct links in the copied text', () => {
@@ -587,6 +710,29 @@ Send me text. I will let you know all the process and also share you information
     expect(second.skipped).toBe(10);
     expect(second.updatedNames).toEqual(['Hallee Nelson']);
     expect(hallee.conversation.map(message => message.text)).toContain('I also started checking the 60 day aging bucket every Friday before month end.');
+    expect(hallee.reply).toBe('');
+    expect(hallee.replyApproved).toBe(false);
+    expect(hallee.posted).toBe(false);
+  });
+
+  it('imports a Simple Practice Billing feed copy with source and vendor filtering', () => {
+    const result = importCopiedThread(simplePracticeFeedCopy, [], {
+      communities,
+      now: new Date('2026-05-25T16:00:00Z').getTime(),
+    });
+
+    expect(result.parsed.source).toBe('Simple Practice Billing');
+    expect(result.added).toBe(5);
+    expect(result.importedAt).toBe('May 25, 2026');
+
+    const turquoise = result.leads.find(lead => lead.name === 'TurquoiseParsnip2059');
+    const ximenia = result.leads.find(lead => lead.name === 'Ximena Alyssa Herriges-Dalsing');
+    const musawir = result.leads.find(lead => lead.name === 'Musawir Khan');
+    expect(turquoise.stage).toBe('not_fit');
+    expect(musawir.stage).toBe('not_fit');
+    expect(ximenia.stage).toBe('engaged');
+    expect(ximenia.source).toBe('Simple Practice Billing');
+    expect(ximenia.postText).toContain('Genuinely curious');
   });
 
   it('does not merge the same commenter across different source posts', () => {

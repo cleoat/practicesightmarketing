@@ -9,6 +9,7 @@ const ACTION_LINES = new Set([
   'send message',
   'follow',
   'edited',
+  'see more',
   'most relevant',
   'all comments',
   'view 1 reply',
@@ -25,8 +26,10 @@ const UI_NOISE_PATTERNS = [
   /^create (a )?(post|story)$/i,
   /^feed posts$/i,
   /^people you may know$/i,
+  /^public group$/i,
   /^add friend$/i,
   /^see all$/i,
+  /^no file chosen$/i,
   /^number of unread/i,
   /^\d+ unread/i,
   /^what's on your mind/i,
@@ -34,6 +37,7 @@ const UI_NOISE_PATTERNS = [
   /^reply as /i,
   /^copy link$/i,
   /^view (all )?\d+ repl(y|ies)$/i,
+  /^[\d.,]+[kKmM]?\s+members$/i,
   /^anonymous participant$/i,
   /^[·•]$/,
   /^[a-z]$/i,
@@ -41,7 +45,7 @@ const UI_NOISE_PATTERNS = [
   /^\+\d+$/,
 ];
 
-const TIMESTAMP_PATTERN = /^(\d+\s*(m|h|d|w|mo|y)|just now)$/i;
+const TIMESTAMP_PATTERN = /^(just now|a minute ago|an hour ago|a day ago|\d+\s*(m|h|d|w|mo|y)|\d+\s+(minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)\s+ago)$/i;
 
 function cleanLine(line) {
   return String(line || '')
@@ -158,6 +162,49 @@ function isSameText(a, b) {
   return Boolean(first && second && first === second);
 }
 
+function isPostContextMarker(line) {
+  return /'s post$/i.test(cleanLine(line));
+}
+
+function findPostContextIndex(lines) {
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    if (isPostContextMarker(lines[index])) return index;
+  }
+  return -1;
+}
+
+function findSourceIndex(lines, sourceInfo) {
+  if (!sourceInfo.source) return -1;
+
+  const postContextIndex = findPostContextIndex(lines);
+  if (postContextIndex >= 0) {
+    const afterMarker = lines.findIndex((line, index) =>
+      index > postContextIndex && isSameText(line, sourceInfo.source)
+    );
+    if (afterMarker >= 0) return afterMarker;
+  }
+
+  const indices = [];
+  lines.forEach((line, index) => {
+    if (isSameText(line, sourceInfo.source)) indices.push(index);
+  });
+  if (!indices.length) return -1;
+
+  const structured = indices.find(index => {
+    const window = lines.slice(index + 1, index + 10);
+    const authorIndex = window.findIndex(line => isLikelyName(line));
+    if (authorIndex < 0) return false;
+    return window.slice(authorIndex + 1).some(line =>
+      !isNoise(line) &&
+      !isTimestamp(line) &&
+      !isScrambledFacebookMeta(line) &&
+      normalizeText(line).length > 20
+    );
+  });
+
+  return structured >= 0 ? structured : indices[0];
+}
+
 function hasCommentBeforeTimestamp(lines, startIndex) {
   let commentLength = 0;
 
@@ -175,9 +222,7 @@ function hasCommentBeforeTimestamp(lines, startIndex) {
 }
 
 function findFirstCommentIndex(lines, sourceInfo) {
-  const sourceIndex = sourceInfo.source
-    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
-    : -1;
+  const sourceIndex = findSourceIndex(lines, sourceInfo);
   const firstNameAfterSourceIndex = lines.findIndex((line, index) =>
     index > sourceIndex &&
     isLikelyName(line) &&
@@ -200,6 +245,7 @@ function findFirstCommentIndex(lines, sourceInfo) {
   }
 
   return lines.findIndex((line, index) => {
+    if (index <= sourceIndex) return false;
     if (!isLikelyName(line)) return false;
     if (sourceInfo.source && isSameText(line, sourceInfo.source)) return false;
     if (looksLikePostAuthor(index)) return false;
@@ -210,9 +256,7 @@ function findFirstCommentIndex(lines, sourceInfo) {
 function sliceRelevantThread(lines, sourceInfo) {
   const startMarkers = ['most relevant', 'all comments', 'view more comments'];
   const endMarkers = ['comment as '];
-  const sourceIndex = sourceInfo.source
-    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
-    : -1;
+  const sourceIndex = findSourceIndex(lines, sourceInfo);
 
   const startIndex = lines.findIndex((line, index) =>
     index > sourceIndex && startMarkers.includes(line.toLowerCase())
@@ -227,9 +271,7 @@ function sliceRelevantThread(lines, sourceInfo) {
 }
 
 function findPostAuthor(lines, sourceInfo, firstCommentIndex) {
-  const sourceIndex = sourceInfo.source
-    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
-    : -1;
+  const sourceIndex = findSourceIndex(lines, sourceInfo);
   const startIndex = sourceIndex >= 0 ? sourceIndex + 1 : 0;
   const stopIndex = firstCommentIndex >= 0 ? firstCommentIndex : lines.length;
 
@@ -244,9 +286,7 @@ function findPostAuthor(lines, sourceInfo, firstCommentIndex) {
 }
 
 function extractPostText(lines, sourceInfo, postAuthor, firstCommentIndex) {
-  const sourceIndex = sourceInfo.source
-    ? lines.findIndex(line => isSameText(line, sourceInfo.source))
-    : -1;
+  const sourceIndex = findSourceIndex(lines, sourceInfo);
   const startIndex = sourceIndex >= 0 ? sourceIndex + 1 : 0;
   const stopIndex = firstCommentIndex >= 0 ? firstCommentIndex : lines.length;
   const parts = [];
@@ -456,6 +496,7 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
   const updatedNames = new Set();
   const addedNames = new Set();
   const matchedNames = new Set();
+  const skippedNames = new Set();
 
   const nextLeads = [...existingLeads];
   const importMatches = new Map();
@@ -478,6 +519,7 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
       if (commentExists(existing, incoming.comment)) {
         skipped += 1;
         duplicateComments += 1;
+        skippedNames.add(incoming.name);
         return;
       }
 
@@ -505,6 +547,10 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
         postText: existing.postText || parsed.postText || '',
         importedAt: existing.importedAt || importedAt,
         lastImportedAt: importedAt,
+        reply: '',
+        replyApproved: false,
+        posted: false,
+        nextFollowUpAt: '',
       };
       importMatches.set(matchKey, nextLeads[existingIndex]);
       updated += 1;
@@ -559,6 +605,7 @@ export function importCopiedThread(rawText, existingLeads, options = {}) {
     addedNames: [...addedNames],
     updatedNames: [...updatedNames],
     matchedNames: [...matchedNames],
+    skippedNames: [...skippedNames],
   };
 }
 

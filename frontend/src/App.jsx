@@ -654,6 +654,39 @@ function App() {
               {!importResult.error && importResult.threadMatched && importResult.updated === 0 && importResult.added === 0 && (
                 <span> Same thread recognized; nothing new to add.</span>
               )}
+              {!importResult.error && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                  gap: 8,
+                  marginTop: 10,
+                  color: COLORS.text,
+                }}>
+                  {[
+                    { label: 'New leads', value: importResult.added },
+                    { label: 'Updated leads', value: importResult.updated },
+                    { label: 'Already saved', value: importResult.skipped },
+                    { label: 'Thread matched', value: importResult.threadMatched ? 'Yes' : 'No' },
+                  ].map(item => (
+                    <div key={item.label} style={{
+                      padding: '8px 9px',
+                      borderRadius: 8,
+                      background: '#fff',
+                      border: `1px solid ${COLORS.border}`,
+                    }}>
+                      <div style={{ fontSize: 11, color: COLORS.muted, textTransform: 'uppercase', fontWeight: 900 }}>
+                        {item.label}
+                      </div>
+                      <div style={{ fontSize: 18, color: COLORS.text, fontWeight: 900 }}>
+                        {item.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!importResult.error && importResult.skippedNames?.length > 0 && (
+                <span> Already had: {importResult.skippedNames.slice(0, 6).join(', ')}{importResult.skippedNames.length > 6 ? ` +${importResult.skippedNames.length - 6} more` : ''}.</span>
+              )}
             </div>
           )}
         </div>
