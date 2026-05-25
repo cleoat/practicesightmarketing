@@ -1,48 +1,104 @@
 import React from 'react';
 import { COLORS } from '../lib/constants';
+import { formatPostedAt, getCommunityPostStats } from '../lib/communityPosts';
 
 function leadAction(lead) {
   if (lead.stage === 'not_fit') {
     return null;
   }
 
-  if (!lead.reply) {
-    return { label: 'Draft reply', color: COLORS.secondary, detail: 'Generate a first response' };
+  const hasUsableReply = Boolean(lead.reply && !/^Error:/i.test(lead.reply));
+  const approved = Boolean(lead.replyApproved && lead.lastApprovedReply === lead.reply);
+
+  if (!hasUsableReply) {
+    return {
+      label: 'Draft',
+      color: COLORS.secondary,
+      detail: lead.stage === 'engaged'
+        ? 'Ask a pain-finding question'
+        : 'Generate the next response',
+      priority: 1,
+    };
+  }
+  if (!approved) {
+    return {
+      label: 'Approve',
+      color: COLORS.primary,
+      detail: 'Edit, approve, and save to thread',
+      priority: 2,
+    };
   }
   if (!lead.posted) {
-    return { label: 'Post reply', color: COLORS.accent, detail: 'Copy, open thread, then mark posted' };
+    return {
+      label: 'Post',
+      color: COLORS.accent,
+      detail: `Post in ${lead.source || lead.ch || 'source'}`,
+      priority: 3,
+    };
   }
-  if (!lead.followUps?.length && ['warm', 'hot', 'testing'].includes(lead.stage)) {
-    return { label: 'Follow up', color: COLORS.warning, detail: 'Log their response or next comment' };
+  if (lead.stage === 'hot') {
+    return {
+      label: 'Check trial',
+      color: COLORS.warning,
+      detail: lead.nextFollowUpAt ? `Follow up ${lead.nextFollowUpAt}` : 'Ask if they were able to try it',
+      priority: 4,
+    };
   }
   if (lead.stage === 'testing') {
-    return { label: 'Ask feedback', color: COLORS.success, detail: 'Move toward feedback notes' };
+    return {
+      label: 'Feedback',
+      color: COLORS.success,
+      detail: lead.nextFollowUpAt ? `Follow up ${lead.nextFollowUpAt}` : 'Ask what it found or missed',
+      priority: 4,
+    };
+  }
+  if (['warm', 'engaged'].includes(lead.stage)) {
+    return {
+      label: 'Watch',
+      color: COLORS.warning,
+      detail: lead.nextFollowUpAt ? `Follow up ${lead.nextFollowUpAt}` : 'Log their next response when it lands',
+      priority: 5,
+    };
   }
   return null;
 }
 
-export function getActionStats(leads) {
+export function getActionStats(leads, communityPosts = []) {
   const activeLeads = leads.filter(lead => lead.stage !== 'not_fit');
-  const needsDraft = activeLeads.filter(lead => !lead.reply).length;
-  const readyToPost = activeLeads.filter(lead => lead.reply && !lead.posted).length;
-  const followUps = activeLeads.filter(lead => lead.posted && !lead.followUps?.length && ['warm', 'hot', 'testing'].includes(lead.stage)).length;
+  const needsDraft = activeLeads.filter(lead => !lead.reply || /^Error:/i.test(lead.reply)).length;
+  const needsApproval = activeLeads.filter(lead =>
+    lead.reply &&
+    !/^Error:/i.test(lead.reply) &&
+    !(lead.replyApproved && lead.lastApprovedReply === lead.reply)
+  ).length;
+  const readyToPost = activeLeads.filter(lead =>
+    lead.reply &&
+    !/^Error:/i.test(lead.reply) &&
+    lead.replyApproved &&
+    lead.lastApprovedReply === lead.reply &&
+    !lead.posted
+  ).length;
+  const followUps = activeLeads.filter(lead => lead.posted && ['warm', 'hot', 'testing'].includes(lead.stage)).length;
   const wins = leads.filter(lead => lead.stage === 'feedback').length;
+  const postedCommunities = getCommunityPostStats(communityPosts).communitiesPostedToday;
 
-  return { needsDraft, readyToPost, followUps, wins };
+  return { needsDraft, needsApproval, readyToPost, followUps, wins, postedCommunities };
 }
 
-export function ActionQueue({ leads }) {
+export function ActionQueue({ leads, communityPosts = [] }) {
   const actions = leads
     .map(lead => ({ lead, action: leadAction(lead) }))
     .filter(item => item.action)
+    .sort((a, b) => a.action.priority - b.action.priority)
     .slice(0, 5);
 
-  const stats = getActionStats(leads);
+  const stats = getActionStats(leads, communityPosts);
+  const communityStats = getCommunityPostStats(communityPosts);
   const blocks = [
     { label: 'Draft', value: stats.needsDraft, color: COLORS.secondary },
+    { label: 'Approve', value: stats.needsApproval, color: COLORS.primary },
     { label: 'Post', value: stats.readyToPost, color: COLORS.accent },
     { label: 'Follow up', value: stats.followUps, color: COLORS.warning },
-    { label: 'Feedback', value: stats.wins, color: COLORS.success },
   ];
 
   return (
@@ -60,7 +116,7 @@ export function ActionQueue({ leads }) {
         boxShadow: '0 14px 30px rgba(15, 23, 42, 0.16)',
       }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: '#BFDBFE', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
-          Today
+          CRM today
         </div>
         <div style={{ fontSize: 28, fontWeight: 900, lineHeight: 1.1, marginBottom: 14 }}>
           Action queue
@@ -82,6 +138,18 @@ export function ActionQueue({ leads }) {
             </div>
           ))}
         </div>
+        <div style={{
+          marginTop: 12,
+          padding: '10px 12px',
+          borderRadius: 8,
+          background: 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(255,255,255,0.14)',
+          fontSize: 13,
+          fontWeight: 800,
+          color: '#E5E7EB',
+        }}>
+          {communityStats.communitiesPostedToday} target{plural(communityStats.communitiesPostedToday)} posted today
+        </div>
       </div>
 
       <div style={{
@@ -94,7 +162,7 @@ export function ActionQueue({ leads }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center', marginBottom: 12 }}>
           <div>
             <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text }}>Next best moves</div>
-            <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>Sorted from missing reply to posted follow-up.</div>
+            <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>Draft, approve, post, then track the next response.</div>
           </div>
           <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.muted }}>
             {actions.length || 0} active
@@ -152,9 +220,46 @@ export function ActionQueue({ leads }) {
             ))}
           </div>
         )}
+
+        {communityStats.recent.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, color: COLORS.text, marginBottom: 8 }}>
+              Recent community activity
+            </div>
+            <div style={{ display: 'grid', gap: 7 }}>
+              {communityStats.recent.slice(0, 4).map(record => (
+                <div key={record.id} style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'minmax(0, 1fr) auto',
+                  gap: 8,
+                  padding: '8px 10px',
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 8,
+                  background: '#fff',
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 900, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {record.communityName}
+                    </div>
+                    <div style={{ fontSize: 12, color: COLORS.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {record.templateTitle || (record.kind === 'reply' ? 'Lead reply' : 'Post')}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, color: COLORS.muted, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                    {formatPostedAt(record.postedAt)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );
+}
+
+function plural(count) {
+  return count === 1 ? '' : 's';
 }
 
 export default ActionQueue;

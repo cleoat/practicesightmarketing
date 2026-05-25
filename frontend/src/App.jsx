@@ -7,12 +7,14 @@ import CommunitiesPanel, { COMMUNITIES } from './components/CommunitiesPanel';
 import { PostTemplatesPanel } from './components/PostTemplatesPanel';
 import { analyzeLeadComment } from './lib/leadAnalysis';
 import { inferChannelFromText } from './lib/communityRules';
+import { formatPostedAt, recordCommunityPost } from './lib/communityPosts';
 import { importCopiedThread, parseCopiedThread } from './lib/threadImport';
 import { appendConversationMessage, formatConversationDate } from './lib/conversation';
 import { findPotentialDuplicateGroups, mergeDuplicateLeads, mergeLeadIds } from './lib/leadMerge';
 import {
   getLeads, setLeads,
   getSettings, setSettings,
+  getCommunityPosts, setCommunityPosts,
   getRedditStats, incrementPostsToday, resetDailyStats
 } from './lib/storage';
 import { APP_BUILD_LABEL, COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES, CHANNELS } from './lib/constants';
@@ -22,6 +24,7 @@ function App() {
   const [leads, setLeadsState] = useState([]);
   const [settings, setSettingsState] = useState({});
   const [redditStats, setRedditStatsState] = useState({});
+  const [communityPosts, setCommunityPostsState] = useState([]);
   const [inputName, setInputName] = useState('');
   const [inputSource, setInputSource] = useState('');
   const [inputChannel, setInputChannel] = useState('reddit');
@@ -37,11 +40,13 @@ function App() {
     setLeadsState(mergeDuplicateLeads(getLeads()).leads);
     setSettingsState(getSettings());
     setRedditStatsState(resetDailyStats());
+    setCommunityPostsState(getCommunityPosts());
     setLoaded(true);
   }, []);
 
   useEffect(() => { if (loaded) setLeads(leads); }, [leads, loaded]);
   useEffect(() => { if (loaded) setSettings(settings); }, [settings, loaded]);
+  useEffect(() => { if (loaded) setCommunityPosts(communityPosts); }, [communityPosts, loaded]);
 
   const inputAnalysis = analyzeLeadComment(inputComment);
   const importPreview = importText.trim() ? parseCopiedThread(importText, COMMUNITIES) : null;
@@ -174,6 +179,22 @@ function App() {
     setTimeout(() => setMsg(''), 1800);
   }
 
+  function handleMarkCommunityPosted(target, options = {}) {
+    const now = options.now || Date.now();
+    let updatedRecords = communityPosts;
+    setCommunityPostsState(current => {
+      updatedRecords = recordCommunityPost(current, target, {
+        ...options,
+        now,
+      });
+      return updatedRecords;
+    });
+    const name = target?.name || target?.source || target?.communityName || target || 'community';
+    setMsg(`Logged ${options.kind === 'reply' ? 'reply' : 'post'} in ${name}`);
+    setTimeout(() => setMsg(''), 1800);
+    return { records: updatedRecords, postedAt: now };
+  }
+
   function stageScore(stage) {
     return {
       saw_it: 1,
@@ -190,6 +211,16 @@ function App() {
     if (incomingStage === 'not_fit') return 'not_fit';
     if (currentStage === 'not_fit') return currentStage;
     return stageScore(incomingStage) > stageScore(currentStage) ? incomingStage : currentStage;
+  }
+
+  function nextFollowUpDate(stage, now = Date.now()) {
+    const days = {
+      hot: 1,
+      testing: 1,
+      warm: 2,
+      engaged: 3,
+    }[stage];
+    return days ? formatConversationDate(now + days * 24 * 60 * 60 * 1000) : '';
   }
 
   function handleReply(id, followUpText) {
@@ -212,15 +243,50 @@ function App() {
       analysisReason: analysis.reason,
       reply: '',
       replyApproved: false,
+      posted: false,
+      nextFollowUpAt: '',
     });
     setMsg('Saved their response');
     setTimeout(() => setMsg(''), 1500);
   }
 
   function handleMarkPosted(id) {
-    handleUpdateLead(id, { posted: true });
-    const newStats = incrementPostsToday();
-    setRedditStatsState({ ...newStats });
+    const lead = leads.find(l => l.id === id);
+    if (!lead) return;
+
+    const target = {
+      name: lead.source || lead.ch || 'Unknown community',
+      platform: lead.ch,
+      url: lead.threadUrl,
+    };
+    const { postedAt } = handleMarkCommunityPosted(target, {
+      kind: 'reply',
+      body: lead.reply || lead.lastApprovedReply || '',
+      note: `Reply to ${lead.name}`,
+    });
+    const replyText = String(lead.reply || lead.lastApprovedReply || '').trim();
+    const shouldLogReply = replyText &&
+      !/^Error:/i.test(replyText) &&
+      !(lead.replyApproved && lead.lastApprovedReply === replyText);
+    const at = formatConversationDate(postedAt);
+
+    handleUpdateLead(id, {
+      posted: true,
+      lastPostedAt: formatPostedAt(postedAt),
+      lastPostedCommunity: target.name,
+      nextFollowUpAt: nextFollowUpDate(lead.stage, postedAt),
+      conversation: shouldLogReply
+        ? appendConversationMessage(lead, 'me', replyText, { now: postedAt, at })
+        : lead.conversation,
+      replyApproved: shouldLogReply ? true : lead.replyApproved,
+      lastApprovedReply: shouldLogReply ? replyText : lead.lastApprovedReply,
+      lastApprovedAt: shouldLogReply ? at : lead.lastApprovedAt,
+    });
+
+    if (lead.ch === 'reddit') {
+      const newStats = incrementPostsToday();
+      setRedditStatsState({ ...newStats });
+    }
   }
 
   function handleUpdateSetting(key, value) {
@@ -282,8 +348,24 @@ function App() {
           <SettingsPanel settings={settings} onUpdate={handleUpdateSetting} />
         </div>
 
+        {msg && (
+          <div style={{
+            fontSize: 14,
+            marginBottom: 14,
+            padding: '10px 12px',
+            borderRadius: 8,
+            background: msg.includes('❌') ? '#FFE5E5' : msg.includes('⚠️') ? '#FFFBF0' : '#E5F5EB',
+            color: msg.includes('❌') ? '#C44' : msg.includes('⚠️') ? '#854F0B' : '#166534',
+            textAlign: 'center',
+            fontWeight: 800,
+            border: `1px solid ${msg.includes('❌') ? '#FECACA' : msg.includes('⚠️') ? '#FDE68A' : '#BBF7D0'}`
+          }}>
+            {msg}
+          </div>
+        )}
+
         {/* Metrics */}
-        <MetricsBar leads={leads} redditStats={redditStats} />
+        <MetricsBar leads={leads} redditStats={redditStats} communityPosts={communityPosts} />
 
         {possibleDuplicateGroups.length > 0 && (
           <div style={{
@@ -351,15 +433,21 @@ function App() {
         )}
 
         {/* Action Queue */}
-        <ActionQueue leads={leads} />
+        <ActionQueue leads={leads} communityPosts={communityPosts} />
 
         {/* Communities */}
-        <CommunitiesPanel onSelect={handleCommunitySelect} />
+        <CommunitiesPanel
+          onSelect={handleCommunitySelect}
+          communityPosts={communityPosts}
+          onMarkPosted={handleMarkCommunityPosted}
+        />
 
         {/* Post Templates */}
         <PostTemplatesPanel
           apiKey={settings.openrouterApiKey}
           preferredModel={settings.openrouterModel}
+          communityPosts={communityPosts}
+          onMarkPosted={handleMarkCommunityPosted}
         />
 
         {/* Copied thread import */}
@@ -677,16 +765,6 @@ function App() {
             + Add lead (Ctrl+Enter)
           </button>
 
-          {msg && (
-            <div style={{
-              fontSize: 14, marginTop: 10, padding: '10px 12px', borderRadius: 8,
-              background: msg.includes('❌') ? '#FFE5E5' : msg.includes('⚠️') ? '#FFFBF0' : '#E5F5EB',
-              color: msg.includes('❌') ? '#C44' : msg.includes('⚠️') ? '#854F0B' : '#166534',
-              textAlign: 'center', fontWeight: 600
-            }}>
-              {msg}
-            </div>
-          )}
         </div>
 
         {/* Stage filters */}

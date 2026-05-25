@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { COLORS } from '../lib/constants';
 import { CUSTOM_COMMUNITIES_STORAGE_KEY } from '../lib/communityRules';
+import { formatPostedAt, getCommunityPostStatus } from '../lib/communityPosts';
 
 const VERIFIED_AT = 'May 20, 2026';
 
@@ -195,7 +196,7 @@ function validateCommunity(form) {
   return '';
 }
 
-function CommunityRow({ c, onSelect, onDelete }) {
+function CommunityRow({ c, onSelect, onDelete, postStatus, onMarkPosted }) {
   const [expanded, setExpanded] = useState(false);
   const meta = PLATFORM_META[c.platform] || PLATFORM_META.other;
 
@@ -270,6 +271,16 @@ function CommunityRow({ c, onSelect, onDelete }) {
               custom
             </span>
           )}
+          <span style={{
+            fontSize: 12,
+            fontWeight: 800,
+            padding: '4px 7px',
+            borderRadius: 6,
+            background: postStatus?.postedToday ? '#DCFCE7' : '#F8FAFC',
+            color: postStatus?.postedToday ? '#166534' : COLORS.muted,
+          }}>
+            {postStatus?.label || 'Not posted yet'}
+          </span>
         </div>
       </div>
 
@@ -284,6 +295,7 @@ function CommunityRow({ c, onSelect, onDelete }) {
           {c.size && <span>{c.size}</span>}
           {c.frequency && <span>{c.frequency}</span>}
           <span>Verified {c.verifiedAt || 'manually'}</span>
+          {postStatus?.lastPost && <span>Last post {formatPostedAt(postStatus.lastPost.postedAt)}</span>}
         </div>
         {expanded && c.search && (
           <div style={{
@@ -302,6 +314,24 @@ function CommunityRow({ c, onSelect, onDelete }) {
       </div>
 
       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
+        {onMarkPosted && (
+          <button
+            onClick={() => onMarkPosted(c, { kind: 'post', note: 'Manual community post mark' })}
+            style={{
+              padding: '8px 10px',
+              fontSize: 13,
+              fontWeight: 800,
+              color: postStatus?.postedToday ? COLORS.success : COLORS.primary,
+              background: postStatus?.postedToday ? '#ECFDF5' : '#fff',
+              border: `1px solid ${postStatus?.postedToday ? '#BBF7D0' : COLORS.border}`,
+              borderRadius: 8,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {postStatus?.postedToday ? 'Posted today' : 'Mark posted'}
+          </button>
+        )}
         {c.search && (
           <button
             onClick={() => setExpanded(!expanded)}
@@ -483,7 +513,7 @@ function AddCommunityForm({ onSave, onCancel }) {
   );
 }
 
-export function CommunitiesPanel({ onSelect }) {
+export function CommunitiesPanel({ onSelect, communityPosts = [], onMarkPosted }) {
   const [open, setOpen] = useState(true);
   const [platformFilter, setPlatformFilter] = useState('all');
   const [safeFilter, setSafeFilter] = useState('all');
@@ -569,7 +599,7 @@ export function CommunitiesPanel({ onSelect }) {
         <div>
           <div style={{ fontSize: 17, fontWeight: 900, color: COLORS.text }}>Verified community targets</div>
           <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 3 }}>
-            Built-ins now require a working direct link. Facebook is manual-only until you add exact group URLs.
+            Direct Facebook group and Reddit subreddit links with posting history.
           </div>
         </div>
         <span style={{ fontSize: 13, color: COLORS.muted, fontWeight: 800 }}>{open ? 'Hide' : 'Show'}</span>
@@ -642,7 +672,14 @@ export function CommunitiesPanel({ onSelect }) {
             </div>
           ) : (
             filtered.map(c => (
-              <CommunityRow key={`${c.platform}-${c.name}`} c={c} onSelect={onSelect} onDelete={c.custom ? handleDelete : null} />
+              <CommunityRow
+                key={`${c.platform}-${c.name}`}
+                c={c}
+                onSelect={onSelect}
+                onDelete={c.custom ? handleDelete : null}
+                postStatus={getCommunityPostStatus(c, communityPosts)}
+                onMarkPosted={onMarkPosted}
+              />
             ))
           )}
 

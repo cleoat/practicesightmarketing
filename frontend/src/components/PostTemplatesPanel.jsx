@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { COLORS } from '../lib/constants';
 import { chatCompletion } from '../lib/openrouter';
-import { communityToneGuidance, formatCommunityForPrompt, getCommunityRule } from '../lib/communityRules';
+import { communityToneGuidance, formatCommunityForPrompt, getCommunityRule, loadCustomCommunities } from '../lib/communityRules';
+import { getCommunityPostStatus } from '../lib/communityPosts';
 import { COMMUNITIES } from './CommunitiesPanel';
 
 const TEMPLATES = [
@@ -183,27 +184,93 @@ const PHASE_COLORS = {
 };
 
 const REMIX_ANGLES = [
-  'Lead with a personal observation or experience',
-  'Lead with a direct question to the reader',
-  'Lead with a specific number or data point ("$970 sitting unbilled", "3 out of 5 colleagues...")',
+  'peer question that exposes whether they have a month-end system',
+  'pain question about a specific thing that can slip through',
+  'small proof or concrete example, then a soft ask',
 ];
 
-async function callRemix(body, community, apiKey, preferredModel) {
+function promptCommunityDetails(rule) {
+  return [
+    `Target: ${formatCommunityForPrompt(rule)}`,
+    `Platform: ${rule.platform}`,
+    `Rule: ${rule.rule || (rule.strict ? 'No product promotion.' : 'Product mention allowed only when context supports it.')}`,
+    `Reminder: ${rule.tip || communityToneGuidance(rule)}`,
+  ].join('\n');
+}
+
+function parseRemixes(text) {
+  const matches = [...String(text || '').matchAll(/(?:^|\n)\s*(?:\*\*)?REMIX\s*\d+\s*:?(?:\*\*)?\s*\n([\s\S]*?)(?=\n\s*(?:\*\*)?REMIX\s*\d+\s*:|$)/gi)];
+  if (matches.length) return matches.map(m => m[1].trim()).filter(Boolean);
+
+  return String(text || '')
+    .split(/\n{2,}/)
+    .map(part => part.replace(/^[-*\d.\s]+/, '').trim())
+    .filter(part => part.length > 20)
+    .slice(0, 3);
+}
+
+function inferTemplatePain(body) {
+  const text = body.toLowerCase();
+  if (text.includes('simplepractice')) return 'getting a clear SimplePractice action list from reports';
+  if (text.includes('denial')) return 'catching denials before they age out';
+  if (text.includes('unbilled') || text.includes('never billed')) return 'finding sessions that were never billed';
+  if (text.includes('month-end') || text.includes('month end')) return 'month-end billing review';
+  return 'knowing whether billing is actually clean';
+}
+
+function buildLocalRemixes(body, communityRule) {
+  const pain = inferTemplatePain(body);
+  const isPhase2 = /practicesight\.pages\.dev/i.test(body);
+  const allowProduct = isPhase2 && !communityRule.strict;
+  const productLine = allowProduct
+    ? 'I built PracticeSight for that exact check: export the SimplePractice reports, drag them in, and it points to what needs attention. practicesight.pages.dev'
+    : '';
+
+  if (communityRule.platform === 'reddit') {
+    return [
+      `For people doing their own insurance billing, how are you handling ${pain}? I am curious whether most people have a checklist, or if it is more of a gut-check when something feels off.`,
+      `What is the one billing thing you trust least at month end: unbilled sessions, unpaid claims, payment posting, or deposits matching what was posted?`,
+      productLine || `I keep coming back to this because the hard part is not knowing the reports exist. It is knowing what needs action before something gets old. How are you catching that now?`,
+    ].filter(Boolean);
+  }
+
+  return [
+    `For those doing your own billing in private practice, what does your ${pain} actually look like at the end of the month?`,
+    `I am curious what people worry about most when reviewing billing: a missed session, an unpaid claim, payment posting, or the bank deposit not matching what was entered.`,
+    productLine || `The part I keep hearing is that people have reports, but not always a clear "check this next" list. Do you use a routine for that or mostly know your numbers well?`,
+  ].filter(Boolean);
+}
+
+async function callRemix(body, community, apiKey, preferredModel, allCommunities) {
   const isPhase2 = body.includes('practicesight.pages.dev');
-  const communityRule = getCommunityRule(community, null, COMMUNITIES);
+  const communityRule = getCommunityRule(community, null, allCommunities);
   const target = formatCommunityForPrompt(communityRule);
   const productInstruction = isPhase2
-    ? 'Keep practicesight.pages.dev in the post naturally'
+    ? communityRule.strict
+      ? 'This destination is no-promotion. Remove the link and convert the idea into a peer-support question.'
+      : 'PracticeSight can be mentioned only after the pain is named. Keep practicesight.pages.dev once, naturally.'
     : 'NO product mention, NO links, NO company names — pure question or peer observation only';
 
   const prompt = `You are a therapist in private practice who does their own SimplePractice billing.
+Your job is not to make generic marketing copy. Your job is to rewrite the original so it feels native to the exact group/subreddit.
 
 ORIGINAL POST:
 "${body}"
 
 TARGET COMMUNITY: ${target}
-RULE: ${productInstruction}
-TONE: ${communityToneGuidance(communityRule)}
+COMMUNITY DETAILS:
+${promptCommunityDetails(communityRule)}
+
+NON-NEGOTIABLE RULE:
+${productInstruction}
+
+PSYCHOLOGY:
+- The post should pull people toward a concrete billing pain: missed sessions, unpaid claims, denied claims, payment posting, bank deposit mismatch, or aging AR.
+- If the audience is not clearly warm, do not pitch. Make them reveal the pain first.
+- If PracticeSight is mentioned, it must feel like a useful next step, not a drive-by link.
+- Do not use generic phrases like optimize, streamline, game changer, unlock, leverage, robust, or revolutionize.
+- Do not sound like an ad, agency, vendor, or content marketer.
+- No hashtags, emojis, hype, or exclamation marks.
 
 Write 3 remixes. Each must take a different angle:
 - Remix 1: ${REMIX_ANGLES[0]}
@@ -212,9 +279,9 @@ Write 3 remixes. Each must take a different angle:
 
 Each remix must:
 - Open with a completely different first sentence
-- Explore the same billing pain point from that angle
-- Sound like a real person typing on their phone, not polished copy
-- Under 80 words
+- Keep the specific billing topic from the original
+- Sound like a real person typing in ${communityRule.platform === 'reddit' ? 'a subreddit' : 'a Facebook group'}
+- Under 90 words
 - No exclamation marks
 
 Format exactly:
@@ -234,11 +301,10 @@ REMIX 3:
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const matches = [...result.text.matchAll(/(?:^|\n)\s*(?:\*\*)?REMIX\s*\d+\s*:?(?:\*\*)?\s*\n([\s\S]*?)(?=\n\s*(?:\*\*)?REMIX\s*\d+\s*:|$)/gi)];
-  return matches.map(m => m[1].trim()).filter(Boolean);
+  return parseRemixes(result.text);
 }
 
-function PhaseSection({ phase, templates, apiKey, preferredModel }) {
+function PhaseSection({ phase, templates, apiKey, preferredModel, allCommunities, communityPosts, onMarkPosted }) {
   const pc = PHASE_COLORS[phase];
   return (
     <div style={{ marginBottom: 20 }}>
@@ -249,18 +315,49 @@ function PhaseSection({ phase, templates, apiKey, preferredModel }) {
       }}>
         {pc.label}
       </div>
-      {templates.map(t => <TemplateCard key={t.id} template={t} apiKey={apiKey} preferredModel={preferredModel} />)}
+      {templates.map(t => (
+        <TemplateCard
+          key={`${t.phase}-${t.id}-${t.title}`}
+          template={t}
+          apiKey={apiKey}
+          preferredModel={preferredModel}
+          allCommunities={allCommunities}
+          communityPosts={communityPosts}
+          onMarkPosted={onMarkPosted}
+        />
+      ))}
     </div>
   );
 }
 
-function TemplateCard({ template, apiKey, preferredModel }) {
+function communityOptionValue(community) {
+  return `${community.platform}:${community.name}`;
+}
+
+function firstMatchingCommunity(template, allCommunities) {
+  const targetText = template.communities.toLowerCase();
+  return allCommunities.find(community => targetText.includes(community.name.toLowerCase()))
+    || allCommunities.find(community => targetText.includes(community.platform))
+    || allCommunities[0]
+    || null;
+}
+
+function TemplateCard({ template, apiKey, preferredModel, allCommunities, communityPosts, onMarkPosted }) {
   const [remixes, setRemixes] = useState([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(null);
   const [expanded, setExpanded] = useState(false);
-  const [community, setCommunity] = useState('');
+  const defaultCommunity = firstMatchingCommunity(template, allCommunities);
+  const [communityKey, setCommunityKey] = useState(defaultCommunity ? communityOptionValue(defaultCommunity) : '');
+
+  useEffect(() => {
+    if (!communityKey && defaultCommunity) setCommunityKey(communityOptionValue(defaultCommunity));
+  }, [communityKey, defaultCommunity]);
+
+  const selectedCommunity = allCommunities.find(community => communityOptionValue(community) === communityKey) || defaultCommunity;
+  const communityRule = getCommunityRule(selectedCommunity?.name || template.communities, selectedCommunity?.platform, allCommunities);
+  const postStatus = selectedCommunity ? getCommunityPostStatus(selectedCommunity, communityPosts) : null;
 
   const copy = (text, id) => {
     navigator.clipboard.writeText(text);
@@ -268,13 +365,30 @@ function TemplateCard({ template, apiKey, preferredModel }) {
     setTimeout(() => setCopied(null), 1500);
   };
 
+  const markPosted = (body, variant) => {
+    if (!selectedCommunity || !onMarkPosted) return;
+    onMarkPosted(selectedCommunity, {
+      kind: 'post',
+      templateId: template.id,
+      templateTitle: template.title,
+      phase: template.phase,
+      variant,
+      body,
+    });
+  };
+
   const handleRemix = async () => {
-    if (!apiKey) { setError('Add your OpenRouter API key in Settings first'); return; }
-    const targetCommunity = community || template.communities.split('·')[0].trim();
-    const rule = getCommunityRule(targetCommunity, null, COMMUNITIES);
+    const targetCommunity = selectedCommunity?.name || template.communities.split('·')[0].trim();
+    const rule = getCommunityRule(targetCommunity, selectedCommunity?.platform, allCommunities);
     const hasProductMention = /PracticeSight|practicesight\.pages\.dev/i.test(template.body);
     if (hasProductMention && rule.strict) {
       setError(`${targetCommunity} is marked no-promotion. Use a Phase 1 template or choose a can-mention community.`);
+      return;
+    }
+    if (!apiKey) {
+      setRemixes(buildLocalRemixes(template.body, rule));
+      setExpanded(true);
+      setError('No OpenRouter key saved. Showing local targeted drafts.');
       return;
     }
     setGenerating(true);
@@ -284,13 +398,17 @@ function TemplateCard({ template, apiKey, preferredModel }) {
         template.body,
         targetCommunity,
         apiKey,
-        preferredModel
+        preferredModel,
+        allCommunities
       );
       if (!results.length) throw new Error('No remixes generated — try again');
       setRemixes(results);
       setExpanded(true);
     } catch (e) {
-      setError(e.message);
+      const fallback = buildLocalRemixes(template.body, rule);
+      setRemixes(fallback);
+      setExpanded(true);
+      setError(`${e.message || 'AI remix failed'} Showing local targeted drafts.`);
     }
     setGenerating(false);
   };
@@ -338,18 +456,86 @@ function TemplateCard({ template, apiKey, preferredModel }) {
           <div style={{ fontSize: 13, color: COLORS.success, marginBottom: 6, fontWeight: 800 }}>Copied</div>
         )}
 
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: 8,
+          alignItems: 'center',
+          marginBottom: 10,
+        }}>
+          <select
+            value={communityKey}
+            onChange={event => {
+              setCommunityKey(event.target.value);
+              setError('');
+            }}
+            style={{
+              minWidth: 0,
+              padding: '10px 11px',
+              fontSize: 14,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              fontFamily: 'inherit',
+              background: '#fff',
+              color: COLORS.text,
+            }}
+          >
+            {allCommunities.map(community => (
+              <option key={communityOptionValue(community)} value={communityOptionValue(community)}>
+                {community.platform === 'reddit' ? 'Reddit' : community.platform === 'facebook' ? 'Facebook' : community.platform} · {community.name}
+              </option>
+            ))}
+          </select>
+
+          <span style={{
+            fontSize: 12,
+            fontWeight: 900,
+            color: postStatus?.postedToday ? COLORS.success : COLORS.muted,
+            background: postStatus?.postedToday ? '#ECFDF5' : '#F8FAFC',
+            border: `1px solid ${postStatus?.postedToday ? '#BBF7D0' : COLORS.border}`,
+            padding: '9px 10px',
+            borderRadius: 8,
+            whiteSpace: 'nowrap',
+          }}>
+            {postStatus?.label || 'Not posted yet'}
+          </span>
+
+          <button
+            onClick={() => markPosted(template.body, 'original')}
+            disabled={!selectedCommunity || !onMarkPosted}
+            style={{
+              padding: '10px 12px',
+              fontSize: 13,
+              fontWeight: 900,
+              background: '#fff',
+              color: selectedCommunity ? COLORS.primary : COLORS.muted,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              cursor: selectedCommunity ? 'pointer' : 'not-allowed',
+              fontFamily: 'inherit',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Mark posted
+          </button>
+        </div>
+
+        <div style={{
+          marginBottom: 10,
+          padding: '8px 10px',
+          borderRadius: 8,
+          background: communityRule.strict ? '#FFF7ED' : '#F0FDF4',
+          border: `1px solid ${communityRule.strict ? '#FED7AA' : '#BBF7D0'}`,
+          color: communityRule.strict ? '#9A3412' : '#166534',
+          fontSize: 12,
+          lineHeight: 1.4,
+          fontWeight: 800,
+        }}>
+          {communityRule.strict ? 'No-promotion target: keep this as a peer question.' : 'Can-mention target: mention PracticeSight only when the post earns it.'}
+        </div>
+
         {/* Remix controls */}
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-          <input
-            value={community}
-            onChange={e => setCommunity(e.target.value)}
-            placeholder="Community (e.g. r/therapists)"
-            style={{
-              flex: 1, minWidth: 180, padding: '9px 11px', fontSize: 14,
-              border: `1px solid ${COLORS.border}`, borderRadius: 8,
-              fontFamily: 'inherit', background: '#fff'
-            }}
-          />
           <button
             onClick={handleRemix}
             disabled={generating}
@@ -398,6 +584,24 @@ function TemplateCard({ template, apiKey, preferredModel }) {
             {copied === `remix-${template.id}-${i}` && (
               <div style={{ fontSize: 13, color: '#166534', marginTop: 4, fontWeight: 800 }}>Copied</div>
             )}
+            <button
+              onClick={() => markPosted(r, `remix-${i + 1}`)}
+              disabled={!selectedCommunity || !onMarkPosted}
+              style={{
+                marginTop: 6,
+                padding: '8px 10px',
+                fontSize: 13,
+                fontWeight: 900,
+                color: selectedCommunity ? COLORS.success : COLORS.muted,
+                background: '#fff',
+                border: `1px solid ${selectedCommunity ? COLORS.success : COLORS.border}`,
+                borderRadius: 8,
+                cursor: selectedCommunity ? 'pointer' : 'not-allowed',
+                fontFamily: 'inherit',
+              }}
+            >
+              Mark this remix posted
+            </button>
           </div>
         ))}
       </div>
@@ -405,8 +609,15 @@ function TemplateCard({ template, apiKey, preferredModel }) {
   );
 }
 
-export function PostTemplatesPanel({ apiKey, preferredModel }) {
+export function PostTemplatesPanel({ apiKey, preferredModel, communityPosts = [], onMarkPosted }) {
   const [open, setOpen] = useState(false);
+  const [customCommunities, setCustomCommunities] = useState([]);
+
+  useEffect(() => {
+    setCustomCommunities(loadCustomCommunities());
+  }, [open]);
+
+  const allCommunities = useMemo(() => [...COMMUNITIES, ...customCommunities], [customCommunities]);
 
   return (
     <div style={{
@@ -433,9 +644,33 @@ export function PostTemplatesPanel({ apiKey, preferredModel }) {
 
       {open && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: '14px 16px' }}>
-          <PhaseSection phase={1} templates={TEMPLATES.filter(t => t.phase === 1)} apiKey={apiKey} preferredModel={preferredModel} />
-          <PhaseSection phase={2} templates={TEMPLATES.filter(t => t.phase === 2)} apiKey={apiKey} preferredModel={preferredModel} />
-          <PhaseSection phase={0} templates={TEMPLATES.filter(t => t.phase === 0)} apiKey={apiKey} preferredModel={preferredModel} />
+          <PhaseSection
+            phase={1}
+            templates={TEMPLATES.filter(t => t.phase === 1)}
+            apiKey={apiKey}
+            preferredModel={preferredModel}
+            allCommunities={allCommunities}
+            communityPosts={communityPosts}
+            onMarkPosted={onMarkPosted}
+          />
+          <PhaseSection
+            phase={2}
+            templates={TEMPLATES.filter(t => t.phase === 2)}
+            apiKey={apiKey}
+            preferredModel={preferredModel}
+            allCommunities={allCommunities}
+            communityPosts={communityPosts}
+            onMarkPosted={onMarkPosted}
+          />
+          <PhaseSection
+            phase={0}
+            templates={TEMPLATES.filter(t => t.phase === 0)}
+            apiKey={apiKey}
+            preferredModel={preferredModel}
+            allCommunities={allCommunities}
+            communityPosts={communityPosts}
+            onMarkPosted={onMarkPosted}
+          />
         </div>
       )}
     </div>

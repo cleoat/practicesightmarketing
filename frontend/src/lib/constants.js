@@ -1,5 +1,5 @@
 // Pipeline stages
-export const APP_BUILD_LABEL = 'Anchored FB import v1';
+export const APP_BUILD_LABEL = 'CRM posting tracker v1';
 
 export const STAGES = [
   { id: 'saw_it', label: 'Saw it', color: '#2563EB', desc: 'No pain yet' },
@@ -47,7 +47,8 @@ export const SPAM_KEYWORDS = [
 export const STORAGE_KEYS = {
   leads: 'ps_leads',
   settings: 'ps_settings',
-  redditStats: 'ps_reddit_stats'
+  redditStats: 'ps_reddit_stats',
+  communityPosts: 'ps_community_posts'
 };
 
 // Default lead template
@@ -72,6 +73,9 @@ export const DEFAULT_LEAD = {
   date: new Date().toLocaleDateString(),
   actions: [],
   posted: false,
+  lastPostedAt: '',
+  lastPostedCommunity: '',
+  nextFollowUpAt: '',
   postUrl: '',
   postAuthor: '',
   postText: '',

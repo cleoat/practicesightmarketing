@@ -357,7 +357,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
             <span>{channel?.icon} {channel?.label || lead.ch}</span>
             {lead.source && <span style={{ background: 'rgba(255,255,255,0.2)', borderRadius: 4, padding: '1px 5px' }}>{lead.source}</span>}
             <span>· {lead.date}</span>
-            {lead.posted && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 4, padding: '1px 6px', fontWeight: 700 }}>✓ Posted</span>}
+            {lead.posted && <span style={{ background: 'rgba(255,255,255,0.25)', borderRadius: 4, padding: '1px 6px', fontWeight: 700 }}>Posted{lead.lastPostedCommunity ? ` in ${lead.lastPostedCommunity}` : ''}</span>}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
@@ -561,10 +561,13 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
                 color: COLORS.success, border: `1px solid ${COLORS.success}`,
                 borderRadius: 6, cursor: 'pointer', fontSize: 14, fontWeight: 800
               }}>
-                Mark as Posted
+                Mark posted in {lead.source || lead.ch || 'source'}
               </button>
             ) : (
-              <div style={{ textAlign: 'center', fontSize: 14, color: COLORS.success, fontWeight: 800, padding: 6 }}>✓ Posted</div>
+              <div style={{ textAlign: 'center', fontSize: 14, color: COLORS.success, fontWeight: 800, padding: 6 }}>
+                Posted{lead.lastPostedAt ? ` ${lead.lastPostedAt}` : ''}
+                {lead.nextFollowUpAt ? ` · follow up ${lead.nextFollowUpAt}` : ''}
+              </div>
             )}
           </div>
         )}

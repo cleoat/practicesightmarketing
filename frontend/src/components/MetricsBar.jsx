@@ -1,11 +1,14 @@
 import React from 'react';
 import { COLORS } from '../lib/constants';
 import { getActionStats } from './ActionQueue';
+import { getCommunityPostStats } from '../lib/communityPosts';
 
-export function MetricsBar({ leads, redditStats }) {
+export function MetricsBar({ leads, redditStats, communityPosts = [] }) {
   const totalLeads = leads.length;
   const activePain = leads.filter(l => ['warm', 'hot'].includes(l.stage)).length;
-  const readyToPost = getActionStats(leads).readyToPost;
+  const actionStats = getActionStats(leads, communityPosts);
+  const communityStats = getCommunityPostStats(communityPosts);
+  const readyToPost = actionStats.readyToPost;
   const posted = leads.filter(l => l.posted).length;
   const feedback = leads.filter(l => l.stage === 'feedback').length;
   const notFit = leads.filter(l => l.stage === 'not_fit').length;
@@ -13,8 +16,9 @@ export function MetricsBar({ leads, redditStats }) {
   const metrics = [
     { label: 'Leads', value: totalLeads, color: COLORS.primary, note: 'tracked' },
     { label: 'Pain', value: activePain, color: COLORS.error, note: 'warm/hot' },
-    { label: 'Ready', value: readyToPost, color: COLORS.accent, note: 'reply drafted' },
+    { label: 'Ready', value: readyToPost, color: COLORS.accent, note: 'approved to post' },
     { label: 'Posted', value: posted, color: COLORS.success, note: `${redditStats?.postsToday || 0} today` },
+    { label: 'Groups', value: communityStats.communitiesPostedToday, color: COLORS.secondary, note: `${communityStats.postedToday} posts today` },
     { label: 'Feedback', value: feedback, color: '#7C3AED', note: 'won learning' },
     { label: 'Not fit', value: notFit, color: COLORS.muted, note: 'filtered out' }
   ];

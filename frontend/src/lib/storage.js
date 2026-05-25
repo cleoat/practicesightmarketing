@@ -47,6 +47,15 @@ export function setRedditStats(stats) {
   return setStorage(STORAGE_KEYS.redditStats, stats);
 }
 
+export function getCommunityPosts() {
+  const records = getStorage(STORAGE_KEYS.communityPosts);
+  return Array.isArray(records) ? records : [];
+}
+
+export function setCommunityPosts(records) {
+  return setStorage(STORAGE_KEYS.communityPosts, Array.isArray(records) ? records : []);
+}
+
 export function incrementPostsToday() {
   const stats = getRedditStats();
   stats.postsToday += 1;
