@@ -41,7 +41,7 @@ function App() {
   const [importResult, setImportResult] = useState(null);
   const [msg, setMsg] = useState('');
   const [filter, setFilter] = useState('all');
-  const [crmView, setCrmView] = useState('threads');
+  const [crmView, setCrmView] = useState('communities');
   const [leadSearch, setLeadSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('all');
   const [loaded, setLoaded] = useState(false);
@@ -90,6 +90,9 @@ function App() {
   });
   const workspaceThreadCount = new Set(workspaceLeads.map(lead =>
     [lead.ch || 'other', lead.source || 'Unknown source', lead.threadKey || lead.threadUrl || lead.postText || lead.id].join('|')
+  )).size;
+  const workspaceCommunityCount = new Set(workspaceLeads.map(lead =>
+    [lead.ch || 'other', lead.source || lead.ch || 'Unknown community'].join('|')
   )).size;
 
   function handleCommunitySelect(name, channel) {
@@ -857,11 +860,12 @@ function App() {
                 Lead workspace
               </div>
               <div style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700, marginTop: 3 }}>
-                {workspaceLeads.length} lead{workspaceLeads.length === 1 ? '' : 's'} · {workspaceThreadCount} thread{workspaceThreadCount === 1 ? '' : 's'} after filters
+                {workspaceLeads.length} lead{workspaceLeads.length === 1 ? '' : 's'} · {workspaceCommunityCount} communit{workspaceCommunityCount === 1 ? 'y' : 'ies'} · {workspaceThreadCount} thread{workspaceThreadCount === 1 ? '' : 's'} after filters
               </div>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {[
+                { id: 'communities', label: 'Communities' },
                 { id: 'threads', label: 'Threads' },
                 { id: 'followup', label: 'Follow-up' },
                 { id: 'stages', label: 'Stages' },
@@ -912,7 +916,7 @@ function App() {
                 fontSize: 15,
               }}
             >
-              <option value="all">All Facebook groups / subreddits</option>
+              <option value="all">All groups / subreddits / communities</option>
               {sourceOptions.map(source => (
                 <option key={source} value={source}>{source}</option>
               ))}

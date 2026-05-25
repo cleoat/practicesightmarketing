@@ -49,6 +49,13 @@ function groupKey(lead) {
   ].join('|');
 }
 
+function communityKey(lead) {
+  return [
+    lead.ch || 'other',
+    lead.source || lead.ch || 'Unknown community',
+  ].join('|');
+}
+
 function stageMeta(stageId) {
   return STAGES.find(stage => stage.id === stageId) || STAGES[0];
 }
@@ -81,6 +88,31 @@ function groupLeadsByThread(leads) {
       }
       const group = groups.get(key);
       group.latest = Math.max(group.latest, activityTime(lead));
+      group.leads.push(lead);
+    });
+
+  return [...groups.values()].sort((a, b) => b.latest - a.latest);
+}
+
+function groupLeadsByCommunity(leads) {
+  const groups = new Map();
+  [...leads]
+    .sort((a, b) => activityTime(b) - activityTime(a))
+    .forEach(lead => {
+      const key = communityKey(lead);
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          source: lead.source || lead.ch || 'Unknown community',
+          channel: lead.ch || 'other',
+          latest: activityTime(lead),
+          leads: [],
+          threadKeys: new Set(),
+        });
+      }
+      const group = groups.get(key);
+      group.latest = Math.max(group.latest, activityTime(lead));
+      group.threadKeys.add(lead.threadKey || lead.threadUrl || lead.postText || lead.id);
       group.leads.push(lead);
     });
 
@@ -136,21 +168,33 @@ function Pill({ children, color = COLORS.muted, bg = '#fff' }) {
   );
 }
 
-function CompactLeadRow({ lead }) {
+function CompactLeadRow({ lead, active = false, onClick }) {
   const stage = stageMeta(lead.stage);
   const text = latestLeadText(lead);
   const action = leadActionLabel(lead);
+  const Component = onClick ? 'button' : 'div';
 
   return (
-    <div style={{
+    <Component
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      style={{
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
       gap: 10,
       alignItems: 'center',
       padding: '9px 10px',
       borderTop: `1px solid ${COLORS.border}`,
-      background: '#fff',
-    }}>
+      borderLeft: active ? `4px solid ${stage.color}` : '4px solid transparent',
+      borderRight: 'none',
+      borderBottom: 'none',
+      background: active ? stage.color + '08' : '#fff',
+      width: '100%',
+      textAlign: 'left',
+      fontFamily: 'inherit',
+      cursor: onClick ? 'pointer' : 'default',
+    }}
+    >
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 14, fontWeight: 900, color: COLORS.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {lead.name}
@@ -174,8 +218,9 @@ function CompactLeadRow({ lead }) {
         <Pill color={action === 'Post' ? COLORS.accent : action === 'Draft' ? COLORS.secondary : action === 'Not fit' ? COLORS.muted : COLORS.warning}>
           {action}
         </Pill>
+        {onClick && <Pill color={active ? stage.color : COLORS.secondary}>{active ? 'Open' : 'Details'}</Pill>}
       </div>
-    </div>
+    </Component>
   );
 }
 
@@ -335,6 +380,213 @@ function ThreadsView({ leads, cardProps }) {
   );
 }
 
+function StageBucket({ stage, leads, activeLeadId, onSelectLead, cardProps }) {
+  if (!leads.length) return null;
+
+  return (
+    <section style={{
+      border: `1px solid ${stage.color}30`,
+      borderRadius: 8,
+      overflow: 'hidden',
+      background: '#fff',
+      marginBottom: 10,
+    }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10,
+        padding: '9px 11px',
+        background: stage.color + '08',
+        borderBottom: `1px solid ${stage.color}25`,
+      }}>
+        <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Pill color={stage.color} bg="#fff">{stage.label}</Pill>
+          <span style={{ fontSize: 13, fontWeight: 800, color: COLORS.text }}>
+            {stage.desc}
+          </span>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 900, color: stage.color, whiteSpace: 'nowrap' }}>
+          {leads.length} lead{leads.length === 1 ? '' : 's'}
+        </span>
+      </div>
+
+      {leads.map(lead => (
+        <div key={lead.id}>
+          <CompactLeadRow
+            lead={lead}
+            active={activeLeadId === lead.id}
+            onClick={() => onSelectLead(activeLeadId === lead.id ? null : lead.id)}
+          />
+          {activeLeadId === lead.id && (
+            <div style={{ padding: 12, background: '#F8FAFC', borderTop: `1px solid ${COLORS.border}` }}>
+              <LeadCard lead={lead} {...cardProps} />
+            </div>
+          )}
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function CommunityGroup({ group, expanded, onToggle, cardProps }) {
+  const [activeLeadId, setActiveLeadId] = useState(null);
+  const buckets = STAGES.map(stage => ({
+    stage,
+    leads: group.leads
+      .filter(lead => lead.stage === stage.id)
+      .sort((a, b) => activityTime(b) - activityTime(a)),
+  })).filter(bucket => bucket.leads.length > 0);
+  const stageSummary = stageCounts(group.leads);
+
+  return (
+    <section style={{
+      background: '#fff',
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 8,
+      overflow: 'hidden',
+      marginBottom: 12,
+      boxShadow: '0 8px 20px rgba(15, 23, 42, 0.04)',
+    }}>
+      <button
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr) auto',
+          gap: 12,
+          alignItems: 'center',
+          padding: '14px 15px',
+          background: expanded ? '#F8FAFC' : '#fff',
+          border: 'none',
+          borderBottom: expanded ? `1px solid ${COLORS.border}` : 'none',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          textAlign: 'left',
+        }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
+            <Pill color={group.channel === 'facebook' ? '#1864AB' : group.channel === 'reddit' ? '#D9480F' : COLORS.secondary}>
+              {group.channel}
+            </Pill>
+            <span style={{ fontSize: 17, fontWeight: 900, color: COLORS.text }}>
+              {group.source}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 900, color: COLORS.muted }}>
+              {group.leads.length} lead{group.leads.length === 1 ? '' : 's'}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 900, color: COLORS.muted }}>
+              {group.threadKeys.size} thread{group.threadKeys.size === 1 ? '' : 's'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {stageSummary.map(item => (
+              <Pill key={item.stage.id} color={item.stage.color} bg={item.stage.color + '08'}>
+                {item.stage.label} {item.count}
+              </Pill>
+            ))}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', display: 'grid', gap: 4 }}>
+          <span style={{ fontSize: 12, color: COLORS.muted, fontWeight: 900, whiteSpace: 'nowrap' }}>
+            {activityLabel(group.latest)}
+          </span>
+          <span style={{
+            fontSize: 13,
+            fontWeight: 900,
+            color: expanded ? COLORS.muted : COLORS.secondary,
+            whiteSpace: 'nowrap',
+          }}>
+            {expanded ? 'Hide stages' : 'Open stages'}
+          </span>
+        </div>
+      </button>
+
+      {expanded ? (
+        <div style={{ padding: 12, background: '#F8FAFC' }}>
+          {buckets.map(bucket => (
+            <StageBucket
+              key={bucket.stage.id}
+              stage={bucket.stage}
+              leads={bucket.leads}
+              activeLeadId={activeLeadId}
+              onSelectLead={setActiveLeadId}
+              cardProps={cardProps}
+            />
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          padding: '9px 12px',
+          borderTop: `1px solid ${COLORS.border}`,
+          background: '#fff',
+          fontSize: 13,
+          color: COLORS.muted,
+          fontWeight: 800,
+        }}>
+          Open to see stage subcategories for this community.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CommunitiesView({ leads, cardProps }) {
+  const groups = useMemo(() => groupLeadsByCommunity(leads), [leads]);
+  const groupKeyList = groups.map(group => group.key).join('||');
+  const [expanded, setExpanded] = useState({});
+
+  useEffect(() => {
+    setExpanded(current => {
+      const activeKeys = new Set(groups.map(group => group.key));
+      const next = Object.fromEntries(Object.entries(current).filter(([key]) => activeKeys.has(key)));
+      if (!Object.values(next).some(Boolean) && groups[0]) next[groups[0].key] = true;
+      return next;
+    });
+  }, [groupKeyList]);
+
+  if (!leads.length) return <EmptyState />;
+
+  const expandAll = () => setExpanded(Object.fromEntries(groups.map(group => [group.key, true])));
+  const collapseAll = () => setExpanded({});
+
+  return (
+    <div style={{ marginBottom: 20 }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10,
+        flexWrap: 'wrap',
+        marginBottom: 10,
+      }}>
+        <div style={{ fontSize: 14, color: COLORS.muted, fontWeight: 800 }}>
+          {groups.length} communit{groups.length === 1 ? 'y' : 'ies'} · {leads.length} lead{leads.length === 1 ? '' : 's'} · stage buckets inside each community
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={expandAll} style={smallButtonStyle()}>
+            Expand all
+          </button>
+          <button onClick={collapseAll} style={smallButtonStyle()}>
+            Collapse all
+          </button>
+        </div>
+      </div>
+
+      {groups.map(group => (
+        <CommunityGroup
+          key={group.key}
+          group={group}
+          expanded={Boolean(expanded[group.key])}
+          onToggle={() => setExpanded(current => ({ ...current, [group.key]: !current[group.key] }))}
+          cardProps={cardProps}
+        />
+      ))}
+    </div>
+  );
+}
+
 function FollowUpView({ leads, cardProps }) {
   const openLeads = [...leads]
     .filter(lead => lead.stage !== 'not_fit')
@@ -470,7 +722,7 @@ export function PipelineView({
   onReply,
   onMarkPosted,
   filter = 'all',
-  viewMode = 'threads',
+  viewMode = 'communities',
   apiKey,
   preferredModel,
 }) {
@@ -485,9 +737,13 @@ export function PipelineView({
     return <FollowUpView leads={filteredByStage} cardProps={cardProps} />;
   }
 
-  return <ThreadsView leads={filteredByStage} cardProps={cardProps} />;
+  if (viewMode === 'threads') {
+    return <ThreadsView leads={filteredByStage} cardProps={cardProps} />;
+  }
+
+  return <CommunitiesView leads={filteredByStage} cardProps={cardProps} />;
 }
 
-export { activityTime, groupLeadsByThread };
+export { activityTime, groupLeadsByCommunity, groupLeadsByThread };
 
 export default PipelineView;
