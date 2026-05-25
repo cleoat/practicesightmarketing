@@ -139,7 +139,7 @@ Write reply #${variation}. Reflect one specific thing and ask what their actual 
 ${context}${name} has real billing pain. Latest message:
 "${comment}"
 
-Write reply #${variation}. Validate the specific pain, then naturally mention you built PracticeSight for this: export SimplePractice reports, drag them in, see what needs attention. Soft invite. Under 60 words. Reply only.`;
+Write reply #${variation}. Validate the specific pain, then naturally mention you built PracticeSight for this: export SimplePractice reports, drag them in, see the specific rows/action list. End with a low-pressure yes/no ask: would they be open to trying it on their reports? Under 65 words. Reply only.`;
   }
 
   if (stage === 'hot') {
@@ -148,7 +148,7 @@ Write reply #${variation}. Validate the specific pain, then naturally mention yo
 ${context}${name} wants to try it or asked how. Latest message:
 "${comment}"
 
-Give the URL practicesight.pages.dev and one clear next step: export the SimplePractice billing reports as CSVs and it walks them through which ones. Under 45 words. Reply only.`;
+Give the URL practicesight.pages.dev and one clear next step: export the SimplePractice billing reports as CSVs, drag them in, and tell you whether it found anything they would have missed. Under 50 words. Reply only.`;
   }
 
   if (stage === 'testing') {

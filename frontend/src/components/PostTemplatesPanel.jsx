@@ -184,9 +184,27 @@ const PHASE_COLORS = {
 };
 
 const REMIX_ANGLES = [
-  'peer question that exposes whether they have a month-end system',
-  'pain question about a specific thing that can slip through',
-  'small proof or concrete example, then a soft ask',
+  'qualify who actually does their own SimplePractice billing',
+  'make the hidden cost/risk feel concrete',
+  'move safe communities toward a small PracticeSight trial',
+];
+
+const CONVERSION_STEPS = [
+  {
+    label: 'Step 1 - qualify',
+    strict: 'Find who has the pain without mentioning PracticeSight.',
+    open: 'Find who has the pain without mentioning PracticeSight yet.',
+  },
+  {
+    label: 'Step 2 - surface risk',
+    strict: 'Make the gap concrete without pitching.',
+    open: 'Make the cost of manual review concrete.',
+  },
+  {
+    label: 'Step 3 - soft trial ask',
+    strict: 'Ask for workflow detail only. No product name or link.',
+    open: 'Invite a few people to try PracticeSight with their own reports.',
+  },
 ];
 
 function promptCommunityDetails(rule) {
@@ -221,35 +239,50 @@ function inferTemplatePain(body) {
 function buildLocalRemixes(body, communityRule) {
   const pain = inferTemplatePain(body);
   const isPhase2 = /practicesight\.pages\.dev/i.test(body);
-  const allowProduct = isPhase2 && !communityRule.strict;
-  const productLine = allowProduct
-    ? 'I built PracticeSight for that exact check: export the SimplePractice reports, drag them in, and it points to what needs attention. practicesight.pages.dev'
-    : '';
+  const allowProduct = !communityRule.strict;
+  const productLine = isPhase2
+    ? 'I built PracticeSight for this: export the SimplePractice reports, drag them in, and it shows the specific rows that need attention. Free, runs in your browser, nothing uploaded. practicesight.pages.dev'
+    : 'I am testing PracticeSight, a free SimplePractice billing checker I built. You export the reports, drag them in, and it shows what needs attention. Would a couple people be open to trying it on real data?';
 
   if (communityRule.platform === 'reddit') {
-    return [
+    const strictReddit = [
       `For people doing their own insurance billing, how are you handling ${pain}? I am curious whether most people have a checklist, or if it is more of a gut-check when something feels off.`,
       `What is the one billing thing you trust least at month end: unbilled sessions, unpaid claims, payment posting, or deposits matching what was posted?`,
-      productLine || `I keep coming back to this because the hard part is not knowing the reports exist. It is knowing what needs action before something gets old. How are you catching that now?`,
-    ].filter(Boolean);
+      `I keep coming back to this because the hard part is not knowing the reports exist. It is knowing what needs action before something gets old. How are you catching that now?`,
+    ];
+    if (!allowProduct) return strictReddit;
+
+    return [
+      strictReddit[0],
+      strictReddit[1],
+      `${productLine} I would be especially curious if it catches anything you did not already know about.`,
+    ];
+  }
+
+  if (!allowProduct) {
+    return [
+      `For those doing your own billing in private practice, what does your ${pain} actually look like at the end of the month?`,
+      `I am curious what people worry about most when reviewing billing: a missed session, an unpaid claim, payment posting, or the bank deposit not matching what was entered.`,
+      `The part I keep hearing is that people have reports, but not always a clear "check this next" list. Do you use a routine for that or mostly know your numbers well?`,
+    ];
   }
 
   return [
     `For those doing your own billing in private practice, what does your ${pain} actually look like at the end of the month?`,
     `I am curious what people worry about most when reviewing billing: a missed session, an unpaid claim, payment posting, or the bank deposit not matching what was entered.`,
-    productLine || `The part I keep hearing is that people have reports, but not always a clear "check this next" list. Do you use a routine for that or mostly know your numbers well?`,
-  ].filter(Boolean);
+    `${productLine} No account needed. I mostly want to know whether it finds anything you would have missed.`,
+  ];
 }
 
 async function callRemix(body, community, apiKey, preferredModel, allCommunities) {
   const isPhase2 = body.includes('practicesight.pages.dev');
   const communityRule = getCommunityRule(community, null, allCommunities);
   const target = formatCommunityForPrompt(communityRule);
-  const productInstruction = isPhase2
-    ? communityRule.strict
-      ? 'This destination is no-promotion. Remove the link and convert the idea into a peer-support question.'
-      : 'PracticeSight can be mentioned only after the pain is named. Keep practicesight.pages.dev once, naturally.'
-    : 'NO product mention, NO links, NO company names — pure question or peer observation only';
+  const productInstruction = communityRule.strict
+    ? 'This destination is no-promotion. Do not mention PracticeSight, links, DMs, trials, tools, or product names.'
+    : isPhase2
+      ? 'PracticeSight should be included naturally. Keep practicesight.pages.dev once and ask for a small real-data trial.'
+      : 'Remix 1 and Remix 2 should not mention PracticeSight. Remix 3 may mention PracticeSight as a small feedback/trial ask because this community is marked can-mention.';
 
   const prompt = `You are a therapist in private practice who does their own SimplePractice billing.
 Your job is not to make generic marketing copy. Your job is to rewrite the original so it feels native to the exact group/subreddit.
@@ -265,14 +298,19 @@ NON-NEGOTIABLE RULE:
 ${productInstruction}
 
 PSYCHOLOGY:
-- The post should pull people toward a concrete billing pain: missed sessions, unpaid claims, denied claims, payment posting, bank deposit mismatch, or aging AR.
-- If the audience is not clearly warm, do not pitch. Make them reveal the pain first.
-- If PracticeSight is mentioned, it must feel like a useful next step, not a drive-by link.
+- The goal is not generic engagement. The goal is to move readers one step closer to trying PracticeSight.
+- Use this ladder:
+  1. Qualify: get only people doing their own SimplePractice billing to self-identify.
+  2. Surface risk: make one hidden billing gap concrete, like missed sessions, unpaid claims, denied claims, payment posting, bank deposit mismatch, or aging AR.
+  3. Trial ask: if rules allow, ask whether 2-3 people would try PracticeSight on their own exports and report what it catches.
+- Make PracticeSight feel like the obvious next step after the pain, not a drive-by link.
+- When mentioning PracticeSight, include the practical proof: SimplePractice reports, drag them in, specific rows/action list, browser-only, nothing uploaded, free.
+- End the trial ask with a simple low-pressure yes/no ask.
 - Do not use generic phrases like optimize, streamline, game changer, unlock, leverage, robust, or revolutionize.
 - Do not sound like an ad, agency, vendor, or content marketer.
 - No hashtags, emojis, hype, or exclamation marks.
 
-Write 3 remixes. Each must take a different angle:
+Write 3 remixes as a sequence that gets progressively closer to a try:
 - Remix 1: ${REMIX_ANGLES[0]}
 - Remix 2: ${REMIX_ANGLES[1]}
 - Remix 3: ${REMIX_ANGLES[2]}
@@ -281,8 +319,9 @@ Each remix must:
 - Open with a completely different first sentence
 - Keep the specific billing topic from the original
 - Sound like a real person typing in ${communityRule.platform === 'reddit' ? 'a subreddit' : 'a Facebook group'}
-- Under 90 words
+- Under 95 words
 - No exclamation marks
+- Do not ask people to DM unless the original template is a DM script
 
 Format exactly:
 REMIX 1:
@@ -546,7 +585,7 @@ function TemplateCard({ template, apiKey, preferredModel, allCommunities, commun
               cursor: generating ? 'not-allowed' : 'pointer', fontFamily: 'inherit'
             }}
           >
-            {generating ? '⏳ Remixing...' : '↺ Get 3 remixes'}
+            {generating ? 'Remixing...' : 'Get trial-path remixes'}
           </button>
           {remixes.length > 0 && (
             <button
@@ -567,8 +606,13 @@ function TemplateCard({ template, apiKey, preferredModel, allCommunities, commun
         {/* Remixes */}
         {expanded && remixes.map((r, i) => (
           <div key={i} style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 13, fontWeight: 900, color: COLORS.muted, marginBottom: 4 }}>
-              Remix {i + 1}
+            <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap', marginBottom: 5 }}>
+              <div style={{ fontSize: 13, fontWeight: 900, color: COLORS.text }}>
+                {CONVERSION_STEPS[i]?.label || `Remix ${i + 1}`}
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.muted }}>
+                {communityRule.strict ? CONVERSION_STEPS[i]?.strict : CONVERSION_STEPS[i]?.open}
+              </div>
             </div>
             <div
               onClick={() => copy(r, `remix-${template.id}-${i}`)}
