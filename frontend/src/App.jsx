@@ -20,6 +20,13 @@ import {
 import { APP_BUILD_LABEL, COLORS, DEFAULT_LEAD, SPAM_KEYWORDS, STAGES, CHANNELS } from './lib/constants';
 import { validateInput, leadSchema } from './lib/validators';
 
+function normalizeFilterText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 function App() {
   const [leads, setLeadsState] = useState([]);
   const [settings, setSettingsState] = useState({});
@@ -34,6 +41,9 @@ function App() {
   const [importResult, setImportResult] = useState(null);
   const [msg, setMsg] = useState('');
   const [filter, setFilter] = useState('all');
+  const [crmView, setCrmView] = useState('threads');
+  const [leadSearch, setLeadSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -56,6 +66,31 @@ function App() {
     day: 'numeric',
     year: 'numeric',
   });
+  const sourceOptions = [...new Set(leads.map(lead => lead.source || lead.ch || 'Unknown source'))]
+    .filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+  const searchNeedle = normalizeFilterText(leadSearch);
+  const workspaceLeads = leads.filter(lead => {
+    const source = lead.source || lead.ch || 'Unknown source';
+    if (sourceFilter !== 'all' && source !== sourceFilter) return false;
+    if (!searchNeedle) return true;
+
+    const haystack = normalizeFilterText([
+      lead.name,
+      lead.source,
+      lead.ch,
+      lead.comment,
+      lead.postText,
+      lead.postAuthor,
+      lead.responseType,
+      lead.intent,
+      ...(lead.conversation || []).map(message => message.text),
+    ].join(' '));
+    return haystack.includes(searchNeedle);
+  });
+  const workspaceThreadCount = new Set(workspaceLeads.map(lead =>
+    [lead.ch || 'other', lead.source || 'Unknown source', lead.threadKey || lead.threadUrl || lead.postText || lead.id].join('|')
+  )).size;
 
   function handleCommunitySelect(name, channel) {
     setInputSource(name);
@@ -800,45 +835,134 @@ function App() {
 
         </div>
 
-        {/* Stage filters */}
+        {/* Lead workspace controls */}
         <div style={{
-          display: 'flex', gap: 8, marginBottom: 20,
-          overflowX: 'auto', paddingBottom: 8
+          background: '#fff',
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 8,
+          padding: 14,
+          marginBottom: 14,
+          boxShadow: '0 8px 20px rgba(15, 23, 42, 0.04)'
         }}>
-          <button onClick={() => setFilter('all')} style={{
-            padding: '10px 16px',
-            border: filter === 'all' ? '2px solid #111' : '1px solid #DDD',
-            background: filter === 'all' ? '#111' : '#fff',
-            color: filter === 'all' ? '#fff' : '#555',
-            borderRadius: 8, fontSize: 14, fontWeight: 800,
-            cursor: 'pointer', whiteSpace: 'nowrap'
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 12,
+            flexWrap: 'wrap',
+            marginBottom: 12
           }}>
-            All ({leads.length})
-          </button>
-          {STAGES.map(s => {
-            const count = leads.filter(l => l.stage === s.id).length;
-            return (
-              <button key={s.id} onClick={() => setFilter(s.id)} style={{
-                padding: '10px 14px',
-                border: filter === s.id ? `2px solid ${s.color}` : '1px solid #DDD',
-                background: filter === s.id ? s.color + '10' : '#fff',
-                color: s.color, borderRadius: 8, fontSize: 14,
-                fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap'
-              }}>
-                {s.label} ({count})
-              </button>
-            );
-          })}
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text }}>
+                Lead workspace
+              </div>
+              <div style={{ fontSize: 13, color: COLORS.muted, fontWeight: 700, marginTop: 3 }}>
+                {workspaceLeads.length} lead{workspaceLeads.length === 1 ? '' : 's'} · {workspaceThreadCount} thread{workspaceThreadCount === 1 ? '' : 's'} after filters
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {[
+                { id: 'threads', label: 'Threads' },
+                { id: 'followup', label: 'Follow-up' },
+                { id: 'stages', label: 'Stages' },
+              ].map(view => (
+                <button
+                  key={view.id}
+                  onClick={() => setCrmView(view.id)}
+                  style={{
+                    padding: '9px 12px',
+                    borderRadius: 8,
+                    border: crmView === view.id ? `2px solid ${COLORS.primary}` : `1px solid ${COLORS.border}`,
+                    background: crmView === view.id ? COLORS.primary : '#fff',
+                    color: crmView === view.id ? '#fff' : COLORS.text,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    fontSize: 14,
+                    fontWeight: 900,
+                  }}
+                >
+                  {view.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: 10,
+            marginBottom: 12
+          }}>
+            <input
+              value={leadSearch}
+              onChange={event => setLeadSearch(event.target.value)}
+              placeholder="Search name, comment, group, or post"
+              style={{
+                ...inputStyle,
+                marginBottom: 0,
+                fontSize: 15,
+              }}
+            />
+            <select
+              value={sourceFilter}
+              onChange={event => setSourceFilter(event.target.value)}
+              style={{
+                ...inputStyle,
+                marginBottom: 0,
+                fontSize: 15,
+              }}
+            >
+              <option value="all">All Facebook groups / subreddits</option>
+              {sourceOptions.map(source => (
+                <option key={source} value={source}>{source}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            overflowX: 'auto',
+            paddingBottom: 2
+          }}>
+            <button onClick={() => setFilter('all')} style={{
+              padding: '9px 13px',
+              border: filter === 'all' ? '2px solid #111' : '1px solid #DDD',
+              background: filter === 'all' ? '#111' : '#fff',
+              color: filter === 'all' ? '#fff' : '#555',
+              borderRadius: 8, fontSize: 13, fontWeight: 900,
+              cursor: 'pointer', whiteSpace: 'nowrap',
+              fontFamily: 'inherit'
+            }}>
+              All ({workspaceLeads.length})
+            </button>
+            {STAGES.map(s => {
+              const count = workspaceLeads.filter(l => l.stage === s.id).length;
+              return (
+                <button key={s.id} onClick={() => setFilter(s.id)} style={{
+                  padding: '9px 12px',
+                  border: filter === s.id ? `2px solid ${s.color}` : '1px solid #DDD',
+                  background: filter === s.id ? s.color + '10' : '#fff',
+                  color: s.color, borderRadius: 8, fontSize: 13,
+                  fontWeight: 900, cursor: 'pointer', whiteSpace: 'nowrap',
+                  fontFamily: 'inherit'
+                }}>
+                  {s.label} ({count})
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Pipeline */}
         <PipelineView
-          leads={leads}
+          leads={workspaceLeads}
           onUpdate={handleUpdateLead}
           onDelete={handleDeleteLead}
           onReply={handleReply}
           onMarkPosted={handleMarkPosted}
           filter={filter}
+          viewMode={crmView}
           apiKey={settings.openrouterApiKey}
           preferredModel={settings.openrouterModel}
         />
