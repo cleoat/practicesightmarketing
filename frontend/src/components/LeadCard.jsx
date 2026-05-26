@@ -46,7 +46,7 @@ const LEAD_TYPE_META = {
   warm            → Validate pain + natural PracticeSight mention if community allows.
   hot             → Remove friction. Clear path to try it. One ask.
   testing         → Encourage + ask what they found.
-  gave_feedback   → Thank + 3 feedback questions.
+  feedback        → Thank + 3 feedback questions.
   not_fit         → Neutral reply. No product unless it is already a direct/private conversation.
 */
 
@@ -62,7 +62,7 @@ const SYSTEM_PERSONA = `You are Leonardo, a therapist in private practice. You w
 
 function buildPrompt({ comment, name, stage, leadType, intent, communityRule, variationNum, conversationContext }) {
   const strict = communityRule?.strict;
-  const canMention = communityRule?.canMentionProduct && ['warm','hot','testing','gave_feedback'].includes(stage);
+  const canMention = communityRule?.canMentionProduct && ['warm','hot','testing','feedback'].includes(stage);
   const isPrivateChannel = ['dm', 'whatsapp'].includes(communityRule?.platform);
   const variation = variationNum || 1;
   const context = conversationContext
@@ -160,7 +160,7 @@ ${context}${name} is testing PracticeSight. Latest message:
 Acknowledge where they are and ask one specific question: what did it find, or was anything confusing? Under 40 words. Reply only.`;
   }
 
-  if (stage === 'gave_feedback') {
+  if (stage === 'feedback') {
     return `${SYSTEM_PERSONA}
 
 ${context}${name} gave feedback. Latest message:
@@ -506,7 +506,7 @@ export function LeadCard({ lead, onUpdate, onDelete, onReply, onMarkPosted, apiK
           }}>
             {strict
               ? `⚠ Strict community — reply stays in peer support mode, no product mention`
-              : ['warm','hot','testing','gave_feedback'].includes(lead.stage)
+              : ['warm','hot','testing','feedback'].includes(lead.stage)
                 ? `✓ Warm lead in open community — reply may naturally mention PracticeSight`
                 : `Building trust — reply stays peer support until they're warm`}
           </div>
